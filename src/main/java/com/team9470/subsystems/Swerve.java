@@ -9,12 +9,13 @@ import com.ctre.phoenix6.swerve.SwerveDrivetrainConstants;
 import com.ctre.phoenix6.swerve.SwerveModule;
 import com.ctre.phoenix6.swerve.SwerveModuleConstants;
 import com.ctre.phoenix6.swerve.SwerveRequest;
-import com.pathplanner.lib.auto.AutoBuilder;
-import com.pathplanner.lib.config.PIDConstants;
-import com.pathplanner.lib.config.RobotConfig;
-import com.pathplanner.lib.controllers.PPHolonomicDriveController;
+// import com.pathplanner.lib.auto.AutoBuilder;
+// import com.pathplanner.lib.config.PIDConstants;
+// import com.pathplanner.lib.config.RobotConfig;
+// import com.pathplanner.lib.controllers.PPHolonomicDriveController;
 
 import com.team9470.TunerConstants;
+import com.team9470.Telemetry;
 import com.team9470.TunerConstants.TunerSwerveDrivetrain;
 import com.team9470.subsystems.vision.VisionPoseAcceptor;
 import com.team9470.util.AllianceFlipUtil;
@@ -57,6 +58,7 @@ public class Swerve extends TunerSwerveDrivetrain implements Subsystem {
 
     private final VisionPoseAcceptor visionPoseAcceptor = new VisionPoseAcceptor();
     private static Swerve instance;
+    private final Telemetry logger = new Telemetry(TunerConstants.kSpeedAt12Volts.in(MetersPerSecond));
 
     private static final double SIM_LOOP_PERIOD = 0.005; // 5 ms
     /* Blue alliance sees forward as 0 degrees (toward red alliance wall) */
@@ -140,7 +142,7 @@ public class Swerve extends TunerSwerveDrivetrain implements Subsystem {
     private boolean m_hasAppliedOperatorPerspective = false;
     private final HashMap<Integer, TxTyPoseRecord> txTyPoses = new HashMap<>();
 
-    private RobotConfig config;
+    // private RobotConfig config;
 
     /**
      * Constructs a CTRE SwerveDrivetrain using the specified constants.
@@ -181,12 +183,12 @@ public class Swerve extends TunerSwerveDrivetrain implements Subsystem {
         if (Utils.isSimulation()) {
             startSimThread();
         }
-        try {
-            config = RobotConfig.fromGUISettings();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        configAutoBuilder();
+        // try {
+        // config = RobotConfig.fromGUISettings();
+        // } catch (Exception e) {
+        // e.printStackTrace();
+        // }
+        // configAutoBuilder();
         // FieldConstants removed - logic commented out
         // for (int i = 1; i <= FieldConstants.aprilTagCount; i++) {
         // txTyPoses.put(i, new TxTyPoseRecord(new Pose2d(), Double.POSITIVE_INFINITY,
@@ -222,31 +224,33 @@ public class Swerve extends TunerSwerveDrivetrain implements Subsystem {
     }
 
     // For pathplanner
-    public void configAutoBuilder() {
-        AutoBuilder.configure(
-                this::getPose, // Robot pose supplier
-                this::resetPose, // Method to reset odometry (will be called if your auto has a starting pose)
-                this::getChassisSpeeds, // ChassisSpeeds supplier. MUST BE ROBOT RELATIVE
-                (speeds, feedforwards) -> setChassisSpeeds(speeds), // Method that will drive the robot given ROBOT
-                                                                    // RELATIVE ChassisSpeeds. Also optionally outputs
-                                                                    // individual module feedforwards
-                new PPHolonomicDriveController( // PPHolonomicController is the built in path following controller for
-                                                // holonomic drive trains
-                        new PIDConstants(10.0, 0.0, 0.0), // Translation PID constants
-                        new PIDConstants(7.0, 0.0, 0.0) // Rotation PID constants
-                ),
-                config, // The robot configuration
-                () -> {
-                    // Boolean supplier that controls when the path will be mirrored for the red
-                    // alliance
-                    // This will flip the path being followed to the red side of the field.
-                    // THE ORIGIN WILL REMAIN ON THE BLUE SIDE
-
-                    return getAlliance() == Alliance.Red;
-                },
-                this // Reference to this subsystem to set requirements
-        );
-    }
+    // public void configAutoBuilder() {
+    // AutoBuilder.configure(
+    // this::getPose, // Robot pose supplier
+    // this::resetPose, // Method to reset odometry (will be called if your auto has
+    // a starting pose)
+    // this::getChassisSpeeds, // ChassisSpeeds supplier. MUST BE ROBOT RELATIVE
+    // (speeds, feedforwards) -> setChassisSpeeds(speeds), // Method that will drive
+    // the robot given ROBOT
+    // // RELATIVE ChassisSpeeds. Also optionally outputs
+    // // individual module feedforwards
+    // new PPHolonomicDriveController( // PPHolonomicController is the built in path
+    // following controller for
+    // // holonomic drive trains
+    // new PIDConstants(10.0, 0.0, 0.0), // Translation PID constants
+    // new PIDConstants(7.0, 0.0, 0.0) // Rotation PID constants
+    // ),
+    // config, // The robot configuration
+    // () -> {
+    // // Boolean supplier that controls when the path will be mirrored for the red
+    // // alliance
+    // // This will flip the path being followed to the red side of the field.
+    // // THE ORIGIN WILL REMAIN ON THE BLUE SIDE
+    // return getAlliance() == Alliance.Red;
+    // },
+    // this // Reference to this subsystem to set requirements
+    // );
+    // }
 
     public void setChassisSpeeds(ChassisSpeeds speeds) {
         setControl(
@@ -319,6 +323,9 @@ public class Swerve extends TunerSwerveDrivetrain implements Subsystem {
 
     @Override
     public void periodic() {
+        logger.telemeterize(getState());
+        // Log telemetry
+        logger.telemeterize(getState());
         /*
          * Periodically try to apply the operator perspective.
          * If we haven't applied the operator perspective before, then we should apply
@@ -396,6 +403,9 @@ public class Swerve extends TunerSwerveDrivetrain implements Subsystem {
     /**
      * Get Twist2d of robot velocity
      */
+    // public RobotConfig getRobotConfig() {
+    // return config;
+    // }
     public Twist2d getRobotTwist() {
         return new Twist2d(getChassisSpeeds().vxMetersPerSecond, getChassisSpeeds().vyMetersPerSecond,
                 getChassisSpeeds().omegaRadiansPerSecond);

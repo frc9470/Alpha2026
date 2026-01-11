@@ -1,7 +1,7 @@
 package com.team9470.subsystems.vision;
 
 import com.ctre.phoenix6.Utils;
-import com.team9470.FieldConstants;
+
 import com.team9470.subsystems.Swerve;
 import com.team9470.util.LogUtil;
 import com.team9470.util.Util;
@@ -28,35 +28,36 @@ public class VisionDevice {
 
     private final PhotonCamera photonCamera;
     private final PhotonPoseEstimator photonPoseEstimator;
-    // private static final AprilTagFieldLayout aprilTagFieldLayout = AprilTagFields.k2024Crescendo.loadAprilTagLayoutField();
-    private static final AprilTagFieldLayout aprilTagFieldLayout = AprilTagFieldLayout.loadField(AprilTagFields.kDefaultField);
-
+    // private static final AprilTagFieldLayout aprilTagFieldLayout =
+    // AprilTagFields.k2024Crescendo.loadAprilTagLayoutField();
+    private static final AprilTagFieldLayout aprilTagFieldLayout = AprilTagFieldLayout
+            .loadField(AprilTagFields.kDefaultField);
 
     public VisionDevice(String name, Transform3d transform) {
         this.photonCamera = new PhotonCamera(name);
         photonPoseEstimator = new PhotonPoseEstimator(
                 aprilTagFieldLayout,
                 PhotonPoseEstimator.PoseStrategy.MULTI_TAG_PNP_ON_COPROCESSOR,
-                transform
-        );
+                transform);
 
         photonPoseEstimator.setMultiTagFallbackStrategy(PhotonPoseEstimator.PoseStrategy.LOWEST_AMBIGUITY);
-
 
     }
 
     // ONLY CALL ONCE PER CAMERA PER ROBOT LOOP
     private int heartbeat = 0;
+
     public void updatePosition(Swerve swerve) {
         SmartDashboard.putNumber("Vision/" + photonCamera.getName() + "/Heartbeat", heartbeat++);
-        LogUtil.recordTransform3d("Vision/" + photonCamera.getName() + "/Robot to Camera Transform", photonPoseEstimator.getRobotToCameraTransform());
+        LogUtil.recordTransform3d("Vision/" + photonCamera.getName() + "/Robot to Camera Transform",
+                photonPoseEstimator.getRobotToCameraTransform());
 
         List<PhotonPipelineResult> results = photonCamera.getAllUnreadResults();
         SmartDashboard.putNumber("Vision/" + photonCamera.getName() + "/results", results.size());
 
         photonPoseEstimator.addHeadingData(Timer.getFPGATimestamp(), swerve.getPose().getRotation());
         for (PhotonPipelineResult result : results) {
-//            PhotonPipelineResult result = photonCamera.getLatestResult();
+            // PhotonPipelineResult result = photonCamera.getLatestResult();
             Optional<EstimatedRobotPose> posEstimate = photonPoseEstimator.update(result,
                     photonCamera.getCameraMatrix(),
                     photonCamera.getDistCoeffs(),
@@ -86,7 +87,8 @@ public class VisionDevice {
                 tagPose.ifPresent(tagPoses::add);
             }
 
-            if (tagPoses.isEmpty()) return;
+            if (tagPoses.isEmpty())
+                return;
 
             // Calculate distances and statistics
             Pair<Double, Double> distanceStats = calculateDistanceStatistics(tagPoses, cameraPose);
@@ -104,14 +106,13 @@ public class VisionDevice {
             }
             // Update robot state with vision data
 
-            swerve.addVisionMeasurement(robotPose.toPose2d(), timestamp, new Matrix<>(Nat.N3(), Nat.N1(), new double[]{xyStdDev, xyStdDev, xyStdDev}));
-
+            swerve.addVisionMeasurement(robotPose.toPose2d(), timestamp,
+                    new Matrix<>(Nat.N3(), Nat.N1(), new double[] { xyStdDev, xyStdDev, xyStdDev }));
 
             // Calculate and log rotation
-//            double rotationDegrees = calculateRotation(pose, Swerve.isRedAlliance());
+            // double rotationDegrees = calculateRotation(pose, Swerve.isRedAlliance());
 
-//        logRotation(rotationDegrees);
-
+            // logRotation(rotationDegrees);
 
         }
     }
@@ -150,7 +151,8 @@ public class VisionDevice {
         return Math.max(0.02, xyStdDev);
     }
 
-    private void logVisionData(List<Pose3d> tagPoses, double xyStdDev, Pose3d camera_pose, Pose3d robotPose, double timestamp) {
+    private void logVisionData(List<Pose3d> tagPoses, double xyStdDev, Pose3d camera_pose, Pose3d robotPose,
+            double timestamp) {
 
         LogUtil.recordPose3d("Vision/" + photonCamera.getName() + "/Tag Poses", tagPoses.toArray(new Pose3d[0]));
         SmartDashboard.putNumber("Vision/" + photonCamera.getName() + "/N Tags Seen", tagPoses.size());
@@ -162,7 +164,6 @@ public class VisionDevice {
                 "Vision/" + photonCamera.getName() + "/Relevant Pose Estimate",
                 Swerve.getInstance().getPose());
     }
-
 
     private double calculateRotation(Pose2d robotPose, boolean isRedAlliance) {
         double rotationDegrees = robotPose
@@ -177,11 +178,10 @@ public class VisionDevice {
         }
     }
 
-
     private static final Map<Integer, Pose2d> tagPoses2d = new HashMap<>();
 
     static {
-        for (int i = 1; i <= FieldConstants.aprilTagCount; i++) {
+        for (int i = 1; i <= 22; i++) { // TODO: Replace with FieldConstants.aprilTagCount
             tagPoses2d.put(
                     i,
                     AprilTagFieldLayout.loadField(AprilTagFields.k2025ReefscapeWelded)
@@ -191,13 +191,15 @@ public class VisionDevice {
         }
     }
 
-//    private void logRotation(double rotationDegrees) {
-//        SmartDashboard.putNumber("Vision Heading/" + mConstants.kTableName, rotationDegrees);
-//        VisionDeviceManager.getInstance().getMovingAverage().addNumber(rotationDegrees);
-//    }
+    // private void logRotation(double rotationDegrees) {
+    // SmartDashboard.putNumber("Vision Heading/" + mConstants.kTableName,
+    // rotationDegrees);
+    // VisionDeviceManager.getInstance().getMovingAverage().addNumber(rotationDegrees);
+    // }
 
     /**
      * Get the Photon Camera object
+     * 
      * @return The Photon Camera object
      */
     public PhotonCamera returnCam() {
@@ -206,6 +208,7 @@ public class VisionDevice {
 
     /**
      * Get the Photon Pose Estimator object
+     * 
      * @return The Photon Pose Estimator object
      */
     public PhotonPoseEstimator returnPoseEstimator() {
@@ -216,9 +219,8 @@ public class VisionDevice {
         return photonCamera.isConnected();
     }
 
-
     public record TxTyObservation(
-            int tagId, int camera, double tx, double ty, double distance, double timestamp) {}
-
+            int tagId, int camera, double tx, double ty, double distance, double timestamp) {
+    }
 
 }

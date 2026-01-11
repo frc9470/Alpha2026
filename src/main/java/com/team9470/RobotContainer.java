@@ -6,15 +6,56 @@ package com.team9470;
 
 import edu.wpi.first.wpilibj2.command.Command;
 
+import com.team9470.subsystems.SimulatedShooter;
+import com.team9470.subsystems.Swerve;
+// import com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType;
+import com.ctre.phoenix6.swerve.SwerveModule;
+import com.ctre.phoenix6.swerve.SwerveRequest;
+import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.wpilibj2.command.InstantCommand;
+import edu.wpi.first.wpilibj2.command.RunCommand;
+import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
+import com.team9470.Constants.OperatorConstants;
+import static edu.wpi.first.units.Units.*;
+
 public class RobotContainer {
 
+  private double MaxSpeed = TunerConstants.kSpeedAt12Volts.in(MetersPerSecond);
+  private double MaxAngularRate = TunerConstants.maxAngularVelocity; // Radians per second? No, constant is in degrees?
+                                                                     // Wait, let me check TunerConstants again.
+  // TunerConstants.maxAngularVelocity is 572.96. Assuming degrees based on
+  // variable name comment in typical TunerX gen.
+  // SwerveRequest.FieldCentric expects Radians per second for rotational rate.
+  // So MaxAngularRate should be Math.toRadians(TunerConstants.maxAngularVelocity)
+  // if that constant is degrees.
+
+  private final SwerveRequest.FieldCentric drive = new SwerveRequest.FieldCentric()
+      .withDeadband(MaxSpeed * 0.1).withRotationalDeadband(MaxAngularRate * 0.1)
+      .withDriveRequestType(SwerveModule.DriveRequestType.OpenLoopVoltage);
+
+  private final Swerve m_swerve = Swerve.getInstance();
+
+  public final SimulatedShooter m_shooter = new SimulatedShooter(m_swerve::getPose, m_swerve::getChassisSpeeds);
+  private final CommandXboxController m_driverController = new CommandXboxController(
+      OperatorConstants.kDriverControllerPort);
+
   public RobotContainer() {
+    MaxAngularRate = Math.toRadians(TunerConstants.maxAngularVelocity);
 
     configureBindings();
   }
 
   private void configureBindings() {
+    // A Button (Launch)
+    // A Button (Launch)
+    m_driverController.a().onTrue(new InstantCommand(() -> m_shooter.launch()));
 
+    m_swerve.setDefaultCommand(
+        m_swerve.applyRequest(() -> drive.withVelocityX(-m_driverController.getLeftY() * MaxSpeed)
+            .withVelocityY(-m_driverController.getLeftX() * MaxSpeed)
+            .withRotationalRate(-m_driverController.getRightX() * MaxAngularRate))); // User can change to
+                                                                                     // -m_driverController.getRightX()
+                                                                                     // if needed
   }
 
   public Command getAutonomousCommand() {

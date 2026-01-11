@@ -1,7 +1,7 @@
 package com.team9470.util;
 
-import com.pathplanner.lib.auto.AutoBuilder;
-import com.pathplanner.lib.commands.PathPlannerAuto;
+// import com.pathplanner.lib.auto.AutoBuilder;
+// import com.pathplanner.lib.commands.PathPlannerAuto;
 import edu.wpi.first.math.geometry.Quaternion;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Rotation3d;
@@ -13,25 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Predicate;
 
-
-
-
-
-
-
-
-
-
 // MAKE THIS PROPER FOR 2025 SEASON
-
-
-
-
-
-
-
-
-
 
 /**
  * Contains basic functions that are used often.
@@ -43,7 +25,8 @@ public class Util {
     /**
      * Prevent this class from being instantiated.
      */
-    private Util() {}
+    private Util() {
+    }
 
     /**
      * Limits the given input to the given magnitude.
@@ -142,16 +125,18 @@ public class Util {
 
     public static double scaledDeadband(double value, double maxValue, double deadband) {
         double deadbandedValue = deadBand(value, deadband);
-        if (epsilonEquals(deadbandedValue, 0.0)) return 0.0;
+        if (epsilonEquals(deadbandedValue, 0.0))
+            return 0.0;
         return Math.signum(deadbandedValue) * ((Math.abs(deadbandedValue) - deadband) / (maxValue - deadband));
     }
 
-//    public static boolean shouldReverse(Rotation2d goalAngle, Rotation2d currentAngle) {
-//        double angleDifference = Math.abs(goalAngle.distance(currentAngle));
-//        double reverseAngleDifference =
-//                Math.abs(goalAngle.distance(currentAngle.rotateBy(Rotation2d.fromDegrees(180.0))));
-//        return reverseAngleDifference < angleDifference;
-//    }
+    // public static boolean shouldReverse(Rotation2d goalAngle, Rotation2d
+    // currentAngle) {
+    // double angleDifference = Math.abs(goalAngle.distance(currentAngle));
+    // double reverseAngleDifference =
+    // Math.abs(goalAngle.distance(currentAngle.rotateBy(Rotation2d.fromDegrees(180.0))));
+    // return reverseAngleDifference < angleDifference;
+    // }
 
     public static Rotation2d robotToFieldRelative(Rotation2d rot, boolean is_red_alliance) {
         if (is_red_alliance) {
@@ -194,20 +179,20 @@ public class Util {
         return argument;
     }
 
-//    public static Pose2d toWPILibPose(com.team254.lib.geometry.Pose2d pose) {
-//        return new Pose2d(
-//                pose.getTranslation().x(),
-//                pose.getTranslation().y(),
-//                edu.wpi.first.math.geometry.Rotation2d.fromDegrees(
-//                        pose.getRotation().getDegrees()));
-//    }
-//
-//    public static com.team254.lib.geometry.Pose2d to254Pose(Pose2d pose) {
-//        return new com.team254.lib.geometry.Pose2d(
-//                pose.getTranslation().getX(),
-//                pose.getTranslation().getY(),
-//                Rotation2d.fromDegrees(pose.getRotation().getDegrees()));
-//    }
+    // public static Pose2d toWPILibPose(com.team254.lib.geometry.Pose2d pose) {
+    // return new Pose2d(
+    // pose.getTranslation().x(),
+    // pose.getTranslation().y(),
+    // edu.wpi.first.math.geometry.Rotation2d.fromDegrees(
+    // pose.getRotation().getDegrees()));
+    // }
+    //
+    // public static com.team254.lib.geometry.Pose2d to254Pose(Pose2d pose) {
+    // return new com.team254.lib.geometry.Pose2d(
+    // pose.getTranslation().getX(),
+    // pose.getTranslation().getY(),
+    // Rotation2d.fromDegrees(pose.getRotation().getDegrees()));
+    // }
 
     public static edu.wpi.first.math.geometry.Rotation2d toWPILibRotation(Rotation2d rot) {
         return edu.wpi.first.math.geometry.Rotation2d.fromDegrees(rot.getDegrees());
@@ -217,41 +202,44 @@ public class Util {
         return new Rotation3d(new Quaternion(w, x, y, z)).toRotation2d().getRadians();
     }
 
-    public static SendableChooser<Command> buildAutoChooser(String defaultAutoName, Predicate<String> filter) {
-        if (!AutoBuilder.isConfigured()) {
-            throw new RuntimeException(
-                    "AutoBuilder was not configured before attempting to build an auto chooser");
-        }
-
-        SendableChooser<Command> chooser = new SendableChooser<>();
-        List<String> autoNames = AutoBuilder.getAllAutoNames();
-
-        PathPlannerAuto defaultOption = null;
-        List<PathPlannerAuto> options = new ArrayList<>();
-
-        for (String autoName : autoNames) {
-            if (!filter.test(autoName)) {
-                continue;
-            }
-            PathPlannerAuto auto = new PathPlannerAuto(autoName);
-
-            if (!defaultAutoName.isEmpty() && defaultAutoName.equals(autoName)) {
-                defaultOption = auto;
-            } else {
-                options.add(auto);
-            }
-        }
-
-        if (defaultOption == null) {
-            Command defaultCommand = Commands.none();
-            defaultCommand.setName("None auto command");
-            chooser.setDefaultOption("None", defaultCommand);
-        } else {
-            chooser.setDefaultOption(defaultOption.getName(), defaultOption);
-        }
-
-        options.forEach(auto -> chooser.addOption(auto.getName(), auto));
-
-        return chooser;
-    }
+    /*
+     * public static SendableChooser<Command> buildAutoChooser(String
+     * defaultAutoName, Predicate<String> filter) {
+     * if (!AutoBuilder.isConfigured()) {
+     * throw new RuntimeException(
+     * "AutoBuilder was not configured before attempting to build an auto chooser");
+     * }
+     * 
+     * SendableChooser<Command> chooser = new SendableChooser<>();
+     * List<String> autoNames = AutoBuilder.getAllAutoNames();
+     * 
+     * PathPlannerAuto defaultOption = null;
+     * List<PathPlannerAuto> options = new ArrayList<>();
+     * 
+     * for (String autoName : autoNames) {
+     * if (!filter.test(autoName)) {
+     * continue;
+     * }
+     * PathPlannerAuto auto = new PathPlannerAuto(autoName);
+     * 
+     * if (!defaultAutoName.isEmpty() && defaultAutoName.equals(autoName)) {
+     * defaultOption = auto;
+     * } else {
+     * options.add(auto);
+     * }
+     * }
+     * 
+     * if (defaultOption == null) {
+     * Command defaultCommand = Commands.none();
+     * defaultCommand.setName("None auto command");
+     * chooser.setDefaultOption("None", defaultCommand);
+     * } else {
+     * chooser.setDefaultOption(defaultOption.getName(), defaultOption);
+     * }
+     * 
+     * options.forEach(auto -> chooser.addOption(auto.getName(), auto));
+     * 
+     * return chooser;
+     * }
+     */
 }

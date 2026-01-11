@@ -7,17 +7,16 @@
 
 package com.team9470.util;
 
-import com.team9470.FieldConstants;
 import edu.wpi.first.math.geometry.*;
 import edu.wpi.first.wpilibj.DriverStation;
 
 public class AllianceFlipUtil {
   public static double applyX(double x) {
-    return shouldFlip() ? FieldConstants.fieldLength - x : x;
+    return shouldFlip() ? 16.54 - x : x; // TODO: Replace with FieldConstants.fieldLength
   }
 
   public static double applyY(double y) {
-    return shouldFlip() ? FieldConstants.fieldWidth - y : y;
+    return shouldFlip() ? 8.05 - y : y; // TODO: Replace with FieldConstants.fieldWidth
   }
 
   public static Translation2d apply(Translation2d translation) {
