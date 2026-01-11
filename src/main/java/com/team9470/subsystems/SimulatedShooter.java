@@ -175,7 +175,7 @@ public class SimulatedShooter extends SubsystemBase {
         // Actually Pose3d.transformBy() does this.
 
         return robotPose3d.transformBy(new edu.wpi.first.math.geometry.Transform3d(
-                AutoAim.TURRET_OFFSET,
+                AutoAim.SHOOTER_OFFSET,
                 new Rotation3d(0, 0, turretYaw.getRadians()) // The turret's rotation relative to robot
         ));
     }

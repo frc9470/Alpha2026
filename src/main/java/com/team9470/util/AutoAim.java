@@ -1,174 +1,191 @@
 package com.team9470.util;
 
-import edu.wpi.first.math.geometry.Pose2d;
-import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.geometry.Translation2d;
-import edu.wpi.first.math.geometry.Translation3d;
+import edu.wpi.first.math.geometry.*;
+import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.util.Units;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 public class AutoAim {
 
-    // Constants
+    // --- Constants ---
     private static final double GRAVITY = 9.81; // m/s^2
 
-    // Geometry Constants (Metric)
-    private static final double SHOOTER_HEIGHT_METERS = Units.inchesToMeters(24.0);
+    // Field Geometry
     private static final double RIM_HEIGHT_METERS = Units.inchesToMeters(72.0);
     private static final double BALL_RADIUS_METERS = Units.inchesToMeters(2.75);
-
-    // Derived Targets
-    // Delta Y Clear = (Rim + Ball Radius) - Shooter Height
-    private static final double DELTA_Y_CLEARANCE = (RIM_HEIGHT_METERS + BALL_RADIUS_METERS) - SHOOTER_HEIGHT_METERS;
-
-    // Target Entry Angle (Descending -35 deg)
-    private static final double GAMMA_TARGET_RAD = Units.degreesToRadians(-35.0);
+    private static final double GOAL_Z = RIM_HEIGHT_METERS + BALL_RADIUS_METERS; // Target Z
 
     // Field Center Target (Reef Center)
-    private static final Translation3d BASE_TARGET = new Translation3d(Units.inchesToMeters(182.111250),
-            Units.inchesToMeters(158.843750), RIM_HEIGHT_METERS);
+    private static final Translation3d BASE_TARGET = new Translation3d(
+            Units.inchesToMeters(182.111250),
+            Units.inchesToMeters(158.843750),
+            GOAL_Z);
 
-    // Turret Offset relative to robot center (20cm forward, 0.5m up) -> Wait, user
-    // said Shooter Exit Height is 24in (~0.6m).
-    // Previous code had 0.5m. Let's update Turret Z to SHOOTER_HEIGHT_METERS to be
-    // consistent with physics model.
-    public static final Translation3d TURRET_OFFSET = new Translation3d(0.2, 0.0, SHOOTER_HEIGHT_METERS);
+    // Shooter Configuration
+    // Exit point relative to robot center
+    public static final Translation3d SHOOTER_OFFSET = new Translation3d(0.2, 0.0, Units.inchesToMeters(24.0));
 
-    public record ShootingSolution(Rotation2d yaw, Rotation2d pitch, double speed, double timeOfFlight) {
+    // Solver Tunables
+    private static final double RELEASE_DELAY = 0.0; // seconds (Command Latency + Mechanism Delay)
+    // Limits
+    private static final double T_MIN = 0.25;
+    private static final double T_MAX = 1.2;
+    private static final double T_STEP = 0.05; // 50ms steps
+    private static final double GAMMA_MAX_RAD = Units.degreesToRadians(-30.0); // Entry angle must be steeper (more
+                                                                               // negative) than this
+
+    // --- Result Record ---
+    public record ShootingSolution(
+            Rotation2d yaw,
+            Rotation2d pitch,
+            double speed,
+            double timeOfFlight,
+            double entryAngle,
+            boolean isValid) {
     }
 
     /**
-     * Returns the target position, flipped based on the current alliance color.
+     * Returns the target position (Field-Relative), flipped based on alliance.
      */
     public static Translation3d getTarget() {
         return AllianceFlipUtil.apply(BASE_TARGET);
     }
 
     /**
-     * Calculates the shooting solution to hit a target from the current robot pose.
-     * 
-     * @param robotPose The current pose of the robot on the field.
-     * @param targetPos The target position in 3D space (Field-Relative).
-     * @return A ShootingSolution containing the necessary turret yaw, pitch,
-     *         shot speed, and time of flight.
+     * Calculates the shooting solution using the Kinematic Solver.
+     * Assumes zero acceleration if not provided.
      */
-    public static ShootingSolution calculate(Pose2d robotPose, Translation3d targetPos) {
-        if (robotPose == null)
-            return new ShootingSolution(new Rotation2d(), Rotation2d.fromDegrees(45), 0.0, 0.0);
+    public static ShootingSolution calculate(Pose2d robotPose, ChassisSpeeds robotSpeeds) {
+        // Assume zero acceleration
+        return solve(robotPose, robotSpeeds, new ChassisSpeeds());
+    }
 
-        // 1. Calculate Turret Position in 3D Space (Field Relative)
-        Translation2d robotTranslation = robotPose.getTranslation();
-        Rotation2d robotRotation = robotPose.getRotation();
-
-        // Rotate the XY part of the offset by the robot's rotation
-        Translation2d offsetXY = new Translation2d(TURRET_OFFSET.getX(), TURRET_OFFSET.getY()).rotateBy(robotRotation);
-
-        Translation3d turretPos = new Translation3d(
-                robotTranslation.getX() + offsetXY.getX(),
-                robotTranslation.getY() + offsetXY.getY(),
-                TURRET_OFFSET.getZ());
-
-        // 2. Calculate Vector to Target (Horizontal Distance d)
-        // Physics model assumes target height is implicitly handled by
-        // DELTA_Y_CLEARANCE relative to Shooter Height.
-        // But we should verify targetPos.Z matches or we use the horizontal distance to
-        // the target XY column.
-
-        double d = turretPos.toTranslation2d().getDistance(targetPos.toTranslation2d());
-
-        // 3. Calculate Yaw (Field Relative Angle to Target)
-        Translation3d toTarget = targetPos.minus(turretPos);
-        Rotation2d angleFieldRelative = new Rotation2d(toTarget.getX(), toTarget.getY());
-        Rotation2d turretYaw = angleFieldRelative.minus(robotRotation);
-
-        // 4. Calculate Pitch (Theta) and Speed (v)
-        // Formula: tan(theta) = (2 * DeltaY / d) - tan(gamma)
-        double tanTheta = (2 * DELTA_Y_CLEARANCE / d) - Math.tan(GAMMA_TARGET_RAD);
-        double thetaRad = Math.atan(tanTheta);
-        Rotation2d pitch = new Rotation2d(thetaRad);
-
-        // Formula: v = sqrt( (g * d^2) / (2 * cos^2(theta) * (DeltaY - d * tan(gamma)))
-        // )
-        double cosTheta = Math.cos(thetaRad);
-        double term = DELTA_Y_CLEARANCE - (d * Math.tan(GAMMA_TARGET_RAD)); // Note: tan(-35) is negative, so this adds
-                                                                            // to DeltaY
-
-        // Safety check for complex roots (shouldn't happen with these constraints but
-        // good practice)
-        if (term <= 0 || cosTheta == 0) {
-            return new ShootingSolution(turretYaw, Rotation2d.fromDegrees(45), 0.0, 0.0); // Unreachable
+    /**
+     * Step 1-6: Full Kinematic Solver
+     */
+    public static ShootingSolution solve(Pose2d p_r, ChassisSpeeds v_r, ChassisSpeeds a_r) {
+        if (p_r == null || v_r == null) {
+            return new ShootingSolution(new Rotation2d(), Rotation2d.fromDegrees(45), 0.0, 0.0, 0.0, false);
         }
-
-        double vSquared = (GRAVITY * d * d) / (2 * cosTheta * cosTheta * term);
-        double speed = Math.sqrt(vSquared);
-
-        // 5. Calculate Time of Flight (t)
-        // d = v_xy * t <=> t = d / v_xy = d / (v * cos(theta))
-        double timeOfFlight = d / (speed * cosTheta);
-
-        return new ShootingSolution(turretYaw, pitch, speed, timeOfFlight);
-    }
-
-    /**
-     * Default calculation aiming at Field Center.
-     */
-    public static ShootingSolution calculate(Pose2d robotPose) {
-        return calculate(robotPose, getTarget());
-    }
-
-    /**
-     * Calculates shooting solution with Lead Compensation for a moving robot.
-     * 
-     * @param robotPose   Current Robot Pose
-     * @param robotSpeeds Current Robot Velocity (ChassisSpeeds, usually Robot
-     *                    Relative)
-     * @return ShootingSolution aimed at a Lead Point
-     */
-    public static ShootingSolution calculate(Pose2d robotPose,
-            edu.wpi.first.math.kinematics.ChassisSpeeds robotSpeeds) {
-        if (robotPose == null || robotSpeeds == null)
-            return calculate(robotPose);
 
         Translation3d target = getTarget();
 
-        // 1. Initial Solution (get TOF)
-        ShootingSolution initialSol = calculate(robotPose, target);
-        double t = initialSol.timeOfFlight();
+        // --- Step 1: Predict Robot State at Release ---
+        double dt = RELEASE_DELAY;
 
-        if (t <= 0)
-            return initialSol;
+        // Predict Heading: psi' = psi + omega*dt
+        Rotation2d psi = p_r.getRotation();
+        double omega = v_r.omegaRadiansPerSecond;
+        Rotation2d psi_prime = psi.plus(new Rotation2d(omega * dt)); // Ignore alpha for now
 
-        // 2. Robot Velocity in Field Frame
-        // Rotate robot-relative speeds by robot heading
-        Translation2d robotVelField = new Translation2d(robotSpeeds.vxMetersPerSecond, robotSpeeds.vyMetersPerSecond)
-                .rotateBy(robotPose.getRotation());
+        // Predict Velocity: v' = v + a*dt (Field Relative)
+        // Convert Robot-Relative inputs to Field-Relative vectors
+        Translation2d v_robot_vec = new Translation2d(v_r.vxMetersPerSecond, v_r.vyMetersPerSecond).rotateBy(psi);
+        Translation2d a_robot_vec = new Translation2d(a_r.vxMetersPerSecond, a_r.vyMetersPerSecond).rotateBy(psi);
+        Translation2d v_prime = v_robot_vec.plus(a_robot_vec.times(dt));
 
-        // 3. Predict Robot Displacement: Delta P = V_robot * t
-        Translation2d deltaP = robotVelField.times(t);
+        // Predict Position: p' = p + v*dt + 0.5*a*dt^2
+        Translation2d p_prime_xy = p_r.getTranslation()
+                .plus(v_robot_vec.times(dt))
+                .plus(a_robot_vec.times(0.5 * dt * dt));
 
-        // 4. Calculate Lead Point: P_lead = P_target - Delta P
-        // (We subtract because if we move TO target, we effectively need to shoot
-        // "shorter" relative to us?
-        // Reuse math:
-        // Ball_Pos_Global = Ball_Pos_Rel + Robot_Pos_t
-        // Ball_Pos_Global = (V_launch_field * t) + Robot_Pos_0
-        // Ball_Pos_Global = (V_launch_rel + V_robot) * t + Robot_Pos_0
-        // Target = (V_launch_rel * t) + (V_robot * t) + Robot_Pos_0
-        // (V_launch_rel * t) = Target - Robot_Pos_0 - (V_robot * t)
-        // The term (Target - V_robot * t) acts as the effective target for the
-        // relative/launcher physics.
-        // Yes, P_lead = Target - (V_robot * t).
+        // Predict Shooter Exit Point in Field Frame
+        // r_s' = R(psi') * r_s
+        Translation2d shooterOffsetXY = new Translation2d(SHOOTER_OFFSET.getX(), SHOOTER_OFFSET.getY())
+                .rotateBy(psi_prime);
+        Translation3d p0 = new Translation3d(
+                p_prime_xy.getX() + shooterOffsetXY.getX(),
+                p_prime_xy.getY() + shooterOffsetXY.getY(),
+                SHOOTER_OFFSET.getZ() // Assume flat floor for now (z=0 + offset)
+        );
 
-        Translation3d leadPoint = new Translation3d(
-                target.getX() - deltaP.getX(),
-                target.getY() - deltaP.getY(),
-                target.getZ());
+        // Predict Shooter Velocity Contribution from Rotation
+        // v_rot = omega' x r_s'
+        // r_s' (3D) = (x, y, z). Omega is around Z.
+        // v_rot = (-omega * y, omega * x, 0)
+        // Note: shooterOffsetXY is (x, y) relative to robot center, rotated to field
+        // frame.
+        // Wait, "r_s' = R_z(psi') * r_s".
+        // Cross product is (0,0,w) x (rx, ry, rz) = (-w*ry, w*rx, 0).
+        // Correct.
+        Translation3d v0_rot = new Translation3d(
+                -omega * shooterOffsetXY.getY(),
+                omega * shooterOffsetXY.getX(),
+                0.0);
+        Translation3d v0_robot = new Translation3d(v_prime.getX(), v_prime.getY(), 0.0).plus(v0_rot);
 
-        // 5. Recompute Solution for Lead Point
-        ShootingSolution leadSol = calculate(robotPose, leadPoint);
+        // --- Step 2, 3, 4: Search over TOF ---
+        ShootingSolution bestSol = null;
+        double bestCost = Double.MAX_VALUE;
 
-        // Optional: One more iteration? The user says "One iteration is usually
-        // sufficient".
+        // Iterate Time of Flight
+        for (double tf = T_MIN; tf <= T_MAX; tf += T_STEP) {
 
-        return leadSol;
+            // A. Solve for Required World Velocity
+            // P_t = P_0 + V_w * t + 0.5 * G * t^2. (G = [0,0,-9.81])
+            // V_w = (P_t - P_0 - 0.5 * G * t^2) / t
+
+            // Gravity Term: 0.5 * G * t^2 = (0, 0, -0.5 * 9.81 * t^2)
+            // Subtracting it means ADDING positive Z.
+            // Numerator = Target - P0 - (GravityVector)
+            // NumeratorZ = TargetZ - P0Z - (-0.5*g*t*t) = TargetZ - P0Z + 0.5*g*t*t
+
+            double vx_world = (target.getX() - p0.getX()) / tf;
+            double vy_world = (target.getY() - p0.getY()) / tf;
+            double vz_world = (target.getZ() - p0.getZ() + (0.5 * GRAVITY * tf * tf)) / tf;
+
+            Translation3d v_world = new Translation3d(vx_world, vy_world, vz_world);
+
+            // B. Check Impact Angle gamma
+            // v_impact = v_world + G*tf
+            double vz_impact = vz_world - (GRAVITY * tf);
+            double vxy_impact = Math.hypot(vx_world, vy_world);
+            double gamma = Math.atan2(vz_impact, vxy_impact); // Angle vs Horizon
+
+            // Reject if too shallow (gamma > -30 deg implies -10, 0, +10. We want < -30
+            // e.g. -45)
+            // -45 < -30 is TRUE.
+            if (gamma > GAMMA_MAX_RAD)
+                continue;
+
+            // --- Step 3: Convert to Shooter Relative ---
+            // v_rel = v_world - v0_robot
+            Translation3d v_rel = v_world.minus(v0_robot);
+
+            // Compute Commands
+            double speed = v_rel.getNorm();
+            double pitchRad = Math.atan2(v_rel.getZ(), Math.hypot(v_rel.getX(), v_rel.getY()));
+            Rotation2d pitch = new Rotation2d(pitchRad);
+            Rotation2d yawField = new Rotation2d(v_rel.getX(), v_rel.getY()); // Absolute direction of ball launch in XY
+
+            // Convert Yaw to Robot Relative
+            // Turret Yaw = YawField - RobotHeading(psi_prime)
+            Rotation2d turretYaw = yawField.minus(psi_prime);
+
+            // --- Step 4: Cost Function ---
+            // Minimize Speed (Energy)
+            double cost = speed;
+
+            // Optimization: Track best
+            if (cost < bestCost) {
+                bestCost = cost;
+                bestSol = new ShootingSolution(turretYaw, pitch, speed, tf, gamma, true);
+            }
+        }
+
+        if (bestSol == null) {
+            // No valid solution found within constraints
+            return new ShootingSolution(new Rotation2d(), Rotation2d.fromDegrees(45), 0.0, 0.0, 0.0, false);
+        }
+
+        // Telemetry
+        LogUtil.recordPose3d("Shooter/Target/Static", new Pose3d(target, new Rotation3d()));
+        // Predict Release Point
+        LogUtil.recordPose3d("Shooter/PredictedRelease",
+                new Pose3d(new Translation3d(p0.getX(), p0.getY(), p0.getZ()), new Rotation3d()));
+        SmartDashboard.putNumber("Shooter/EntryAngleDeg", Units.radiansToDegrees(bestSol.entryAngle));
+        SmartDashboard.putNumber("Shooter/Speed", bestSol.speed);
+
+        return bestSol;
     }
 }
