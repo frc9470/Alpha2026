@@ -23,7 +23,10 @@ public class AutoAim {
 
     // Shooter Configuration
     // Exit point relative to robot center
-    public static final Translation3d SHOOTER_OFFSET = new Translation3d(0.2, 0.0, Units.inchesToMeters(24.0));
+    public static final Translation3d SHOOTER_OFFSET = new Translation3d(
+            com.team9470.Constants.ShooterConstants.kShooterOffsetX,
+            0.0,
+            com.team9470.Constants.ShooterConstants.kShooterOffsetZ);
 
     // Solver Tunables
     private static final double RELEASE_DELAY = 0.0; // seconds (Command Latency + Mechanism Delay)
@@ -36,7 +39,7 @@ public class AutoAim {
 
     // --- Result Record ---
     public record ShootingSolution(
-            Rotation2d yaw,
+            Rotation2d targetRobotYaw,
             Rotation2d pitch,
             double speed,
             double timeOfFlight,
@@ -108,6 +111,7 @@ public class AutoAim {
         // Wait, "r_s' = R_z(psi') * r_s".
         // Cross product is (0,0,w) x (rx, ry, rz) = (-w*ry, w*rx, 0).
         // Correct.
+        // Predict Shooter Velocity Contribution from Rotation
         Translation3d v0_rot = new Translation3d(
                 -omega * shooterOffsetXY.getY(),
                 omega * shooterOffsetXY.getX(),
@@ -122,14 +126,6 @@ public class AutoAim {
         for (double tf = T_MIN; tf <= T_MAX; tf += T_STEP) {
 
             // A. Solve for Required World Velocity
-            // P_t = P_0 + V_w * t + 0.5 * G * t^2. (G = [0,0,-9.81])
-            // V_w = (P_t - P_0 - 0.5 * G * t^2) / t
-
-            // Gravity Term: 0.5 * G * t^2 = (0, 0, -0.5 * 9.81 * t^2)
-            // Subtracting it means ADDING positive Z.
-            // Numerator = Target - P0 - (GravityVector)
-            // NumeratorZ = TargetZ - P0Z - (-0.5*g*t*t) = TargetZ - P0Z + 0.5*g*t*t
-
             double vx_world = (target.getX() - p0.getX()) / tf;
             double vy_world = (target.getY() - p0.getY()) / tf;
             double vz_world = (target.getZ() - p0.getZ() + (0.5 * GRAVITY * tf * tf)) / tf;
@@ -137,30 +133,27 @@ public class AutoAim {
             Translation3d v_world = new Translation3d(vx_world, vy_world, vz_world);
 
             // B. Check Impact Angle gamma
-            // v_impact = v_world + G*tf
             double vz_impact = vz_world - (GRAVITY * tf);
             double vxy_impact = Math.hypot(vx_world, vy_world);
-            double gamma = Math.atan2(vz_impact, vxy_impact); // Angle vs Horizon
+            double gamma = Math.atan2(vz_impact, vxy_impact);
 
-            // Reject if too shallow (gamma > -30 deg implies -10, 0, +10. We want < -30
-            // e.g. -45)
-            // -45 < -30 is TRUE.
+            // Reject if too shallow
             if (gamma > GAMMA_MAX_RAD)
                 continue;
 
             // --- Step 3: Convert to Shooter Relative ---
-            // v_rel = v_world - v0_robot
             Translation3d v_rel = v_world.minus(v0_robot);
 
             // Compute Commands
             double speed = v_rel.getNorm();
             double pitchRad = Math.atan2(v_rel.getZ(), Math.hypot(v_rel.getX(), v_rel.getY()));
+
             Rotation2d pitch = new Rotation2d(pitchRad);
-            Rotation2d yawField = new Rotation2d(v_rel.getX(), v_rel.getY()); // Absolute direction of ball launch in XY
+            Rotation2d yawField = new Rotation2d(v_rel.getX(), v_rel.getY());
 
             // Convert Yaw to Robot Relative
-            // Turret Yaw = YawField - RobotHeading(psi_prime)
-            Rotation2d turretYaw = yawField.minus(psi_prime);
+            // Robot Should Face the Shot Direction (YawField)
+            Rotation2d targetRobotYaw = yawField;
 
             // --- Step 4: Cost Function ---
             // Minimize Speed (Energy)
@@ -169,7 +162,7 @@ public class AutoAim {
             // Optimization: Track best
             if (cost < bestCost) {
                 bestCost = cost;
-                bestSol = new ShootingSolution(turretYaw, pitch, speed, tf, gamma, true);
+                bestSol = new ShootingSolution(targetRobotYaw, pitch, speed, tf, gamma, true);
             }
         }
 
