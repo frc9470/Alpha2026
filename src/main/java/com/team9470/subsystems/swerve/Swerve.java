@@ -1,4 +1,4 @@
-package com.team9470.subsystems;
+package com.team9470.subsystems.swerve;
 
 import choreo.Choreo;
 import choreo.auto.AutoFactory;

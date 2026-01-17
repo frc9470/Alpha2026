@@ -14,7 +14,7 @@ public class Robot extends TimedRobot {
   private final RobotContainer m_robotContainer;
 
   public Robot() {
-
+    super(0.02); // Run loop at 50Hz (Standard)
     m_robotContainer = new RobotContainer();
   }
 

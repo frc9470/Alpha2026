@@ -5,8 +5,9 @@
 package com.team9470;
 
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
-import com.team9470.subsystems.Swerve;
+import com.team9470.subsystems.swerve.Swerve;
 // import com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType;
 import com.ctre.phoenix6.swerve.SwerveModule;
 import com.ctre.phoenix6.swerve.SwerveRequest;
@@ -39,8 +40,8 @@ public class RobotContainer {
 
   private final Swerve m_swerve = Swerve.getInstance();
 
-  public final com.team9470.subsystems.Shooter m_shooter = new com.team9470.subsystems.Shooter();
-  private final com.team9470.subsystems.Intake m_intake = com.team9470.subsystems.Intake.getInstance();
+  public final com.team9470.subsystems.shooter.Shooter m_shooter = new com.team9470.subsystems.shooter.Shooter();
+  private final com.team9470.subsystems.intake.Intake m_intake = com.team9470.subsystems.intake.Intake.getInstance();
   private final CommandXboxController m_driverController = new CommandXboxController(
       OperatorConstants.kDriverControllerPort);
 
@@ -48,7 +49,6 @@ public class RobotContainer {
     MaxAngularRate = Math.toRadians(TunerConstants.maxAngularVelocity);
 
     m_shooter.setSimulationContext(m_swerve::getPose, m_swerve::getChassisSpeeds);
-    m_shooter.seedField(); // Stage Fuel
 
     configureBindings();
   }
@@ -64,7 +64,7 @@ public class RobotContainer {
 
           // Aim Robot
           double rotError = solution.targetRobotYaw().minus(m_swerve.getPose().getRotation()).getRadians();
-          double rotCmd = rotError * 8.0;
+          double rotCmd = (rotError * 12.0) + solution.targetOmega(); // Add Feedforward
 
           // Fire if aligned
           boolean isAligned = Math.abs(rotError) < Math.toRadians(3.0);
@@ -82,9 +82,32 @@ public class RobotContainer {
 
           m_shooter.setFiring(isAligned);
 
+          // Dynamic Swerve Limiting
+          // Prioritize Rotation: Slow down translation if rotation demands high wheel
+          // speed
+          final double kDriveRadius = 0.45; // meters (hypot(13.5, 11.5) inches)
+          double rotCost = Math.abs(rotCmd) * kDriveRadius;
+          double transLimit = Math.max(0.0, (MaxSpeed - rotCost) * 0.80); // 20% Overhead Safety Margin
+
+          double vX = -m_driverController.getLeftY() * MaxSpeed;
+          double vY = -m_driverController.getLeftX() * MaxSpeed;
+
+          // Desaturate Translation
+          double vMag = Math.hypot(vX, vY);
+          if (vMag > transLimit) {
+            double scale = transLimit / vMag;
+            vX *= scale;
+            vY *= scale;
+          }
+
+          SmartDashboard.putNumber("Debug/Limiting/RotCost", rotCost);
+          SmartDashboard.putNumber("Debug/Limiting/TransLimit", transLimit);
+          SmartDashboard.putNumber("Debug/Limiting/OriginalMag", vMag);
+          SmartDashboard.putNumber("Debug/Limiting/FinalMag", Math.hypot(vX, vY));
+
           // Drive
-          m_swerve.setControl(autoAimDrive.withVelocityX(-m_driverController.getLeftY() * MaxSpeed)
-              .withVelocityY(-m_driverController.getLeftX() * MaxSpeed)
+          m_swerve.setControl(autoAimDrive.withVelocityX(vX)
+              .withVelocityY(vY)
               .withRotationalRate(rotCmd));
         }, m_swerve).finallyDo(() -> {
           m_shooter.setFiring(false);

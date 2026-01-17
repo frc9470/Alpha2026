@@ -12,7 +12,7 @@ import com.ctre.phoenix6.swerve.SwerveModuleConstants.ClosedLoopOutputType;
 // import com.ctre.phoenix6.swerve.SwerveModuleConstants.DriveMotorArrangement;
 // import com.ctre.phoenix6.swerve.SwerveModuleConstants.SteerMotorArrangement;
 import com.ctre.phoenix6.swerve.SwerveModuleConstantsFactory;
-import com.team9470.subsystems.Swerve;
+import com.team9470.subsystems.swerve.Swerve;
 import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.numbers.N1;

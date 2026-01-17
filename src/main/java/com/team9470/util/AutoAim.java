@@ -3,7 +3,9 @@ package com.team9470.util;
 import edu.wpi.first.math.geometry.*;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.util.Units;
+import static edu.wpi.first.units.Units.*;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import com.team9470.subsystems.shooter.ShooterConstants;
 
 public class AutoAim {
 
@@ -24,9 +26,9 @@ public class AutoAim {
     // Shooter Configuration
     // Exit point relative to robot center
     public static final Translation3d SHOOTER_OFFSET = new Translation3d(
-            com.team9470.Constants.ShooterConstants.kShooterOffsetX,
-            0.0,
-            com.team9470.Constants.ShooterConstants.kShooterOffsetZ);
+            ShooterConstants.kShooterOffsetX,
+            Meters.of(0.0),
+            ShooterConstants.kShooterOffsetZ);
 
     // Solver Tunables
     private static final double RELEASE_DELAY = 0.0; // seconds (Command Latency + Mechanism Delay)
@@ -44,6 +46,7 @@ public class AutoAim {
             double speed,
             double timeOfFlight,
             double entryAngle,
+            double targetOmega,
             boolean isValid) {
     }
 
@@ -68,7 +71,7 @@ public class AutoAim {
      */
     public static ShootingSolution solve(Pose2d p_r, ChassisSpeeds v_r, ChassisSpeeds a_r) {
         if (p_r == null || v_r == null) {
-            return new ShootingSolution(new Rotation2d(), Rotation2d.fromDegrees(45), 0.0, 0.0, 0.0, false);
+            return new ShootingSolution(new Rotation2d(), Rotation2d.fromDegrees(45), 0.0, 0.0, 0.0, 0.0, false);
         }
 
         Translation3d target = getTarget();
@@ -161,14 +164,30 @@ public class AutoAim {
 
             // Optimization: Track best
             if (cost < bestCost) {
+                // Calculate Heading Feedforward (Angular Velocity required to track target)
+                // Omega_ff = (r x v_rel) / r^2
+                // r = Vector to Target (dx, dy)
+                // v_rel = Velocity of Target relative to Robot = -v_robot (Field Relative)
+                // Numerator = dx * (-vy) - dy * (-vx) = dy * vx - dx * vy
+                double dx_ff = target.getX() - p_r.getX();
+                double dy_ff = target.getY() - p_r.getY();
+                double distSq = dx_ff * dx_ff + dy_ff * dy_ff;
+                double vX_robot = v_robot_vec.getX();
+                double vY_robot = v_robot_vec.getY();
+
+                double targetOmega = 0.0;
+                if (distSq > 1e-6) {
+                    targetOmega = (dy_ff * vX_robot - dx_ff * vY_robot) / distSq;
+                }
+
                 bestCost = cost;
-                bestSol = new ShootingSolution(targetRobotYaw, pitch, speed, tf, gamma, true);
+                bestSol = new ShootingSolution(targetRobotYaw, pitch, speed, tf, gamma, targetOmega, true);
             }
         }
 
         if (bestSol == null) {
             // No valid solution found within constraints
-            return new ShootingSolution(new Rotation2d(), Rotation2d.fromDegrees(45), 0.0, 0.0, 0.0, false);
+            return new ShootingSolution(new Rotation2d(), Rotation2d.fromDegrees(45), 0.0, 0.0, 0.0, 0.0, false);
         }
 
         // Telemetry
@@ -178,6 +197,33 @@ public class AutoAim {
                 new Pose3d(new Translation3d(p0.getX(), p0.getY(), p0.getZ()), new Rotation3d()));
         SmartDashboard.putNumber("Shooter/EntryAngleDeg", Units.radiansToDegrees(bestSol.entryAngle));
         SmartDashboard.putNumber("Shooter/Speed", bestSol.speed);
+
+        // Enhanced Diagnostics
+        SmartDashboard.putNumber("Shooter/Solver/TimeOfFlight", bestSol.timeOfFlight);
+        SmartDashboard.putNumber("Shooter/Solver/PitchDeg", bestSol.pitch.getDegrees());
+        SmartDashboard.putNumber("Shooter/Solver/TargetYawDeg", bestSol.targetRobotYaw.getDegrees());
+
+        // Kinematic Compensation Diagnostics
+        // Compare "Static" speed (v_world magnitude) vs "Dynamic" speed (v_rel
+        // magnitude)
+        // We can re-calculate v_world magnitude from the last iteration's best solution
+        // components if needed,
+        // or just accept we log the result.
+        // Let's log the Robot Velocity input to confirm it's non-zero
+        SmartDashboard.putNumber("Shooter/Solver/InputRobotVelX", v_r.vxMetersPerSecond);
+        SmartDashboard.putNumber("Shooter/Solver/InputRobotVelY", v_r.vyMetersPerSecond);
+        SmartDashboard.putNumber("Shooter/Solver/InputRobotOmega", v_r.omegaRadiansPerSecond);
+
+        // Heading Diagnostics
+        // Calculate what the yaw would be if we were stationary (Static Look-At)
+        double dx = target.getX() - p_r.getX();
+        double dy = target.getY() - p_r.getY();
+        Rotation2d staticYaw = new Rotation2d(dx, dy);
+
+        SmartDashboard.putNumber("Shooter/Solver/StaticYawDeg", staticYaw.getDegrees());
+        SmartDashboard.putNumber("Shooter/Solver/CompensatedYawDeg", bestSol.targetRobotYaw.getDegrees());
+        SmartDashboard.putNumber("Shooter/Solver/YawCompensationErr",
+                bestSol.targetRobotYaw.minus(staticYaw).getDegrees());
 
         return bestSol;
     }

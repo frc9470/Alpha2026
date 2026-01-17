@@ -4,6 +4,7 @@ import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.util.Units;
 import java.util.ArrayList;
 import java.util.List;
+import com.team9470.subsystems.intake.IntakeConstants;
 
 public class PhysicsSim {
 
@@ -148,7 +149,7 @@ public class PhysicsSim {
             // Intake Geometry
             double pX = 0.35;
             double pZ = 0.2;
-            double armLen = com.team9470.Constants.IntakeConstants.kIntakeLength;
+            double armLen = IntakeConstants.kIntakeLength;
             double rollerRadius = 0.05;
             double rollerWidth = 0.6; // Intake width overlapping the bumper
 

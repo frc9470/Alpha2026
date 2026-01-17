@@ -2,7 +2,7 @@ package com.team9470.subsystems.vision;
 
 import com.ctre.phoenix6.Utils;
 
-import com.team9470.subsystems.Swerve;
+import com.team9470.subsystems.swerve.Swerve;
 import com.team9470.util.LogUtil;
 import com.team9470.util.Util;
 import edu.wpi.first.apriltag.AprilTagFieldLayout;

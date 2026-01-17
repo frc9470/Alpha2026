@@ -1,7 +1,7 @@
 package com.team9470.subsystems.vision;
 
 import com.team9470.Robot;
-import com.team9470.subsystems.Swerve;
+import com.team9470.subsystems.swerve.Swerve;
 import edu.wpi.first.apriltag.AprilTagFieldLayout;
 import edu.wpi.first.apriltag.AprilTagFields;
 import edu.wpi.first.math.geometry.Rotation2d;

@@ -1,18 +1,22 @@
-package com.team9470.subsystems;
+package com.team9470.subsystems.shooter;
 
+import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
-import com.ctre.phoenix6.controls.Follower;
+
 import com.ctre.phoenix6.controls.PositionVoltage;
 import com.ctre.phoenix6.controls.VelocityVoltage;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.NeutralModeValue;
-import com.team9470.Constants.ShooterConstants;
+
+import com.team9470.subsystems.intake.Intake;
+import com.team9470.subsystems.swerve.Swerve;
 import com.team9470.simulation.PhysicsSim;
 import com.team9470.util.AutoAim.ShootingSolution;
 
 import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.math.system.plant.LinearSystemId;
 import edu.wpi.first.math.util.Units;
+import static edu.wpi.first.units.Units.*;
 import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.geometry.*;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
@@ -29,37 +33,11 @@ import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 public class Shooter extends SubsystemBase {
 
-    // helper function to create config
-    private static TalonFXConfiguration createFlywheelConfig() {
-        var config = new TalonFXConfiguration();
-        config.Slot0.kP = ShooterConstants.kFlywheelVkP;
-        config.Slot0.kV = ShooterConstants.kFlywheelVkV;
-        config.MotorOutput.NeutralMode = NeutralModeValue.Coast;
-
-        // Current Limits (Supply) - Protect Breaker, allow burst for recovery
-        config.CurrentLimits.withSupplyCurrentLimit(80.0) // Flat 80A limit
-                .withSupplyCurrentLimitEnable(true);
-
-        return config;
-    }
-
-    private static TalonFXConfiguration createHoodConfig() {
-        var config = new TalonFXConfiguration();
-        config.Slot0.kP = ShooterConstants.kHoodVkP;
-        config.Slot0.kG = ShooterConstants.kHoodVkG; // Gravity Feedforward
-        config.MotorOutput.NeutralMode = NeutralModeValue.Brake;
-        config.Feedback.SensorToMechanismRatio = ShooterConstants.kHoodGearRatio;
-
-        // Current Limits (Supply) - Safety for mechanism
-        config.CurrentLimits.withSupplyCurrentLimit(40.0)
-                .withSupplyCurrentLimitEnable(true);
-
-        return config;
-    }
-
     // Hardware
     private final TalonFX m_flywheelMaster = new TalonFX(ShooterConstants.kFlywheelMasterId);
     private final TalonFX m_flywheelSlave = new TalonFX(ShooterConstants.kFlywheelSlaveId);
+    private final TalonFX m_flywheelSlave2 = new TalonFX(ShooterConstants.kFlywheelSlave2Id);
+    private final TalonFX m_flywheelSlave3 = new TalonFX(ShooterConstants.kFlywheelSlave3Id);
     private final TalonFX m_hoodMotor = new TalonFX(ShooterConstants.kHoodMotorId);
 
     // Controls
@@ -79,37 +57,41 @@ public class Shooter extends SubsystemBase {
     private boolean m_isFiring = false;
     private double m_lastLaunchTime = 0.0;
     private double m_measuredBPS = 0.0;
+    private boolean m_shootLeft = true;
 
     private final List<PhysicsSim.Projectile> m_projectiles = new ArrayList<>();
     private final StructArrayPublisher<Pose3d> m_ballPublisher;
-    // private final StructPublisher<Pose3d> m_turretPublisher; // No Turret
+
     private final StructPublisher<Pose3d> m_targetPublisher;
 
     // Simulation
     private final FlywheelSim m_flywheelSim = new FlywheelSim(
             LinearSystemId.createFlywheelSystem(
-                    DCMotor.getKrakenX60(2),
-                    ShooterConstants.kFlywheelMOI,
+                    DCMotor.getKrakenX60(4),
+                    ShooterConstants.kFlywheelMOI.in(KilogramSquareMeters),
                     ShooterConstants.kFlywheelGearRatio),
-            DCMotor.getKrakenX60(2),
+            DCMotor.getKrakenX60(4),
             ShooterConstants.kFlywheelGearRatio);
 
     private final SingleJointedArmSim m_hoodSim = new SingleJointedArmSim(
             DCMotor.getKrakenX60(1),
             ShooterConstants.kHoodGearRatio,
-            ShooterConstants.kHoodMOI,
-            ShooterConstants.kHoodLength,
-            ShooterConstants.kMinHoodAngle,
-            ShooterConstants.kMaxHoodAngle,
+            ShooterConstants.kHoodMOI.in(KilogramSquareMeters),
+            ShooterConstants.kHoodLength.in(Meters),
+            ShooterConstants.kMinHoodAngle.in(Radians),
+            ShooterConstants.kMaxHoodAngle.in(Radians),
             true, // Simulate Gravity
             0.0 // Starting Angle
     );
 
     public Shooter() {
         // Init Hardware
-        m_flywheelMaster.getConfigurator().apply(createFlywheelConfig());
-        m_flywheelSlave.getConfigurator().apply(createFlywheelConfig());
-        m_hoodMotor.getConfigurator().apply(createHoodConfig());
+        m_flywheelMaster.getConfigurator().apply(ShooterConstants.kFlywheelConfig);
+        m_flywheelSlave.getConfigurator().apply(ShooterConstants.kFlywheelConfig);
+        m_flywheelSlave2.getConfigurator().apply(ShooterConstants.kFlywheelConfig);
+        m_flywheelSlave3.getConfigurator().apply(ShooterConstants.kFlywheelConfig);
+
+        m_hoodMotor.getConfigurator().apply(ShooterConstants.kHoodConfig);
 
         // Slave follows Master via simple duplicate control for now (Follower API
         // issue)
@@ -119,6 +101,7 @@ public class Shooter extends SubsystemBase {
         var table = NetworkTableInstance.getDefault().getTable("Sim");
         m_ballPublisher = table.getStructArrayTopic("BallPose", Pose3d.struct).publish();
         m_targetPublisher = table.getStructTopic("TargetPose", Pose3d.struct).publish();
+
     }
 
     public void setSimulationContext(Supplier<Pose2d> poseSupplier, Supplier<ChassisSpeeds> speedsSupplier) {
@@ -153,7 +136,8 @@ public class Shooter extends SubsystemBase {
         // Let's assume direct mapping for now.
         double hoodRadians = solution.pitch().getRadians();
         // Clamp to limits
-        hoodRadians = Math.max(ShooterConstants.kMinHoodAngle, Math.min(ShooterConstants.kMaxHoodAngle, hoodRadians));
+        hoodRadians = Math.max(ShooterConstants.kMinHoodAngle.in(Radians),
+                Math.min(ShooterConstants.kMaxHoodAngle.in(Radians), hoodRadians));
         m_targetHoodAngleRotations = Units.radiansToRotations(hoodRadians);
     }
 
@@ -231,7 +215,7 @@ public class Shooter extends SubsystemBase {
             double ballMass = 0.27; // kg
             double ballKE = 0.5 * ballMass * speed * speed;
 
-            double moi = ShooterConstants.kFlywheelMOI;
+            double moi = ShooterConstants.kFlywheelMOI.in(KilogramSquareMeters);
             double flywheelRadPerSec = Units.rotationsToRadians(flywheelRPS);
             double flywheelKE = 0.5 * moi * flywheelRadPerSec * flywheelRadPerSec;
 
@@ -246,37 +230,27 @@ public class Shooter extends SubsystemBase {
     }
 
     private void spawnProjectile(double speedRPS, Rotation2d pitch, Rotation2d yawField) {
-        // 1. Find Stored Note
-        PhysicsSim.Projectile p = null;
-        for (PhysicsSim.Projectile note : m_projectiles) {
-            if (note.isStored) {
-                p = note;
-                break;
-            }
-        }
-
-        if (p == null) {
-            // Dry Fire
-            return;
-        }
+        // 1. Infinite Ammo: Create new projectile instead of taking from storage
+        PhysicsSim.Projectile p = new PhysicsSim.Projectile(new Translation3d(), new Translation3d());
+        m_projectiles.add(p);
 
         // 2. Calculate Launch Vector
 
         // Muzzle Position (Robot Center + Offset)
-        Pose2d robotPose = com.team9470.subsystems.Swerve.getInstance().getPose();
+        Pose2d robotPose = Swerve.getInstance().getPose();
 
         // Flywheel Tangential Speed
         // v = r * w
         // r = 0.05 (Wheel Radius approx 2 inches?)
         // speedRPS is MOTOR RPS. We need FLYWHEEL RPS.
-        double gearRatio = com.team9470.Constants.ShooterConstants.kFlywheelGearRatio;
+        double gearRatio = ShooterConstants.kFlywheelGearRatio;
         double flywheelRPS = speedRPS / gearRatio;
 
         double wheelRadius = 0.05; // m
         double exitSpeed = flywheelRPS * 2.0 * Math.PI * wheelRadius;
 
         // Apply Efficiency
-        exitSpeed *= com.team9470.Constants.ShooterConstants.kFlywheelEfficiency;
+        exitSpeed *= ShooterConstants.kFlywheelEfficiency;
 
         // Pitch & Yaw Vectors
         // Orientation: Pitch is up from horizontal. Yaw is field relative.
@@ -288,7 +262,7 @@ public class Shooter extends SubsystemBase {
         Translation3d vWorld = new Translation3d(vX, vY, vZ);
 
         // Add Robot Velocity
-        ChassisSpeeds chassisSpeeds = com.team9470.subsystems.Swerve.getInstance().getChassisSpeeds();
+        ChassisSpeeds chassisSpeeds = Swerve.getInstance().getChassisSpeeds();
         // Translate Robot Relative Chassis Speeds (vx, vy) to Field Relative Velocity
         // vector
         // This vector (vRobot) is then added to the ball's launch vector (vWorld)
@@ -302,16 +276,29 @@ public class Shooter extends SubsystemBase {
         vWorld = vWorld.plus(vRobot);
 
         // 3. Launch Stored Note
-        p.isStored = false;
+        // 3. Launch Stored Note
+        // p.isStored = false; // Infinite Ammo: Not using storage
 
         // Shooter Offset: Centralized in Constants
-        double offX = ShooterConstants.kShooterOffsetX;
-        double offZ = ShooterConstants.kShooterOffsetZ;
-        // Rotate Offset
-        Translation3d p0 = new Translation3d(
-                robotPose.getX() + (offX * robotPose.getRotation().getCos()),
-                robotPose.getY() + (offX * robotPose.getRotation().getSin()),
-                offZ);
+        double offX = ShooterConstants.kShooterOffsetX.in(Meters);
+        double offZ = ShooterConstants.kShooterOffsetZ.in(Meters);
+
+        // Double Shooter: Alternating Fire
+        m_shootLeft = !m_shootLeft; // Toggle
+        double lateralOffset = Units.inchesToMeters(3.25) * (m_shootLeft ? 1.0 : -1.0); // +/- 3.25in
+
+        // Calculate Position in Field Frame
+        // Robot Frame:
+        // X = offX
+        // Y = lateralOffset
+        // Z = offZ
+
+        // Rotation (Yaw)
+        Rotation2d rot = robotPose.getRotation();
+        double finalX = robotPose.getX() + (offX * rot.getCos()) - (lateralOffset * rot.getSin());
+        double finalY = robotPose.getY() + (offX * rot.getSin()) + (lateralOffset * rot.getCos());
+
+        Translation3d p0 = new Translation3d(finalX, finalY, offZ);
 
         p.position = p0;
         p.velocity = vWorld;
@@ -365,6 +352,8 @@ public class Shooter extends SubsystemBase {
         // Apply Controls
         m_flywheelMaster.setControl(m_flywheelRequest.withVelocity(m_targetSpeedRPS));
         m_flywheelSlave.setControl(m_flywheelRequest.withVelocity(m_targetSpeedRPS));
+        m_flywheelSlave2.setControl(m_flywheelRequest.withVelocity(m_targetSpeedRPS));
+        m_flywheelSlave3.setControl(m_flywheelRequest.withVelocity(m_targetSpeedRPS));
         m_hoodMotor.setControl(m_hoodRequest.withPosition(m_targetHoodAngleRotations));
 
         // Telemetry
@@ -407,6 +396,11 @@ public class Shooter extends SubsystemBase {
         SmartDashboard.putNumber("Debug/HoodErrRot", hoodErr);
         SmartDashboard.putNumber("Debug/ExitVelErr", exitVelErr);
         SmartDashboard.putNumber("Debug/MeasuredBPS", m_measuredBPS);
+
+        // Saturation Check
+        boolean isReachable = m_targetSpeedRPS <= ShooterConstants.kMaxMotorSpeed;
+        SmartDashboard.putBoolean("Debug/IsSetpointReachable", isReachable);
+        SmartDashboard.putNumber("Debug/SetpointSaturation", m_targetSpeedRPS / ShooterConstants.kMaxMotorSpeed);
     }
 
     private final List<Double> m_shotTimestamps = new ArrayList<>();
@@ -488,10 +482,10 @@ public class Shooter extends SubsystemBase {
 
     private void updateProjectiles(double dt) {
         // 1. Update Physics & Scoring via Unified Simulator
-        edu.wpi.first.math.geometry.Pose2d robotPose = com.team9470.subsystems.Swerve.getInstance().getPose();
+        edu.wpi.first.math.geometry.Pose2d robotPose = Swerve.getInstance().getPose();
 
         // Fetch Robot Relative Speeds (Forward/Strafe)
-        edu.wpi.first.math.kinematics.ChassisSpeeds robotRelSpeeds = com.team9470.subsystems.Swerve.getInstance()
+        edu.wpi.first.math.kinematics.ChassisSpeeds robotRelSpeeds = Swerve.getInstance()
                 .getChassisSpeeds();
 
         // Convert to Field Relative (World X/Y) for Physics Collision
@@ -501,7 +495,7 @@ public class Shooter extends SubsystemBase {
                 .fromRobotRelativeSpeeds(
                         robotRelSpeeds, robotPose.getRotation());
 
-        var intake = com.team9470.subsystems.Intake.getInstance();
+        var intake = Intake.getInstance();
         double intakeAngle = intake.getPivotAngle();
         boolean intakeActive = intake.isRunning();
 
