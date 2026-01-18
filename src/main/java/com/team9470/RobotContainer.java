@@ -6,6 +6,7 @@ package com.team9470;
 
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.math.kinematics.ChassisSpeeds;
 
 import com.team9470.subsystems.swerve.Swerve;
 // import com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType;
@@ -45,6 +46,10 @@ public class RobotContainer {
   private final CommandXboxController m_driverController = new CommandXboxController(
       OperatorConstants.kDriverControllerPort);
 
+  // Acceleration Tracking for Predictive Shooting
+  private ChassisSpeeds m_lastChassisSpeeds = new ChassisSpeeds();
+  private static final double LOOP_PERIOD = 0.02; // 20ms standard FRC loop time
+
   public RobotContainer() {
     MaxAngularRate = Math.toRadians(TunerConstants.maxAngularVelocity);
 
@@ -57,10 +62,24 @@ public class RobotContainer {
     // Right Bumper: Auto-Aim & Rapid Fire
     m_driverController.rightBumper().whileTrue(
         new RunCommand(() -> {
-          // Calculate Aim
+          // Get current chassis speeds
+          ChassisSpeeds currentSpeeds = m_swerve.getChassisSpeeds();
+          
+          // Calculate acceleration: a = (v_current - v_last) / dt
+          ChassisSpeeds acceleration = new ChassisSpeeds(
+              (currentSpeeds.vxMetersPerSecond - m_lastChassisSpeeds.vxMetersPerSecond) / LOOP_PERIOD,
+              (currentSpeeds.vyMetersPerSecond - m_lastChassisSpeeds.vyMetersPerSecond) / LOOP_PERIOD,
+              (currentSpeeds.omegaRadiansPerSecond - m_lastChassisSpeeds.omegaRadiansPerSecond) / LOOP_PERIOD
+          );
+          
+          // Store current speeds for next iteration
+          m_lastChassisSpeeds = currentSpeeds;
+          
+          // Calculate Aim with acceleration feedforward
           var solution = com.team9470.util.AutoAim.calculate(
               m_swerve.getPose(),
-              m_swerve.getChassisSpeeds());
+              currentSpeeds,
+              acceleration);
 
           // Aim Robot
           double rotError = solution.targetRobotYaw().minus(m_swerve.getPose().getRotation()).getRadians();

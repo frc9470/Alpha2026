@@ -31,7 +31,7 @@ public class AutoAim {
             ShooterConstants.kShooterOffsetZ);
 
     // Solver Tunables
-    private static final double RELEASE_DELAY = 0.0; // seconds (Command Latency + Mechanism Delay)
+    private static final double RELEASE_DELAY = 0.1; // seconds (Command Latency + Mechanism Delay) - Tune: increase if lagging, decrease if leading
     // Limits
     private static final double T_MIN = 0.25;
     private static final double T_MAX = 1.2;
@@ -57,6 +57,10 @@ public class AutoAim {
         return AllianceFlipUtil.apply(BASE_TARGET);
     }
 
+    // Low-pass filter state for acceleration smoothing
+    private static ChassisSpeeds filteredAcceleration = new ChassisSpeeds();
+    private static final double ACCEL_FILTER_ALPHA = 0.3; // Lower = smoother, Higher = more responsive
+
     /**
      * Calculates the shooting solution using the Kinematic Solver.
      * Assumes zero acceleration if not provided.
@@ -64,6 +68,23 @@ public class AutoAim {
     public static ShootingSolution calculate(Pose2d robotPose, ChassisSpeeds robotSpeeds) {
         // Assume zero acceleration
         return solve(robotPose, robotSpeeds, new ChassisSpeeds());
+    }
+
+    /**
+     * Calculates the shooting solution with acceleration feedforward.
+     * Use this overload when tracking robot acceleration for better prediction.
+     * @param robotPose Current robot pose
+     * @param robotSpeeds Current robot velocity (robot-relative)
+     * @param robotAcceleration Current robot acceleration (robot-relative)
+     */
+    public static ShootingSolution calculate(Pose2d robotPose, ChassisSpeeds robotSpeeds, ChassisSpeeds robotAcceleration) {
+        // Apply low-pass filter to acceleration to reduce jitter
+        filteredAcceleration = new ChassisSpeeds(
+            filteredAcceleration.vxMetersPerSecond * (1 - ACCEL_FILTER_ALPHA) + robotAcceleration.vxMetersPerSecond * ACCEL_FILTER_ALPHA,
+            filteredAcceleration.vyMetersPerSecond * (1 - ACCEL_FILTER_ALPHA) + robotAcceleration.vyMetersPerSecond * ACCEL_FILTER_ALPHA,
+            filteredAcceleration.omegaRadiansPerSecond * (1 - ACCEL_FILTER_ALPHA) + robotAcceleration.omegaRadiansPerSecond * ACCEL_FILTER_ALPHA
+        );
+        return solve(robotPose, robotSpeeds, filteredAcceleration);
     }
 
     /**
