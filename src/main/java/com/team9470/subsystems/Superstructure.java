@@ -37,6 +37,7 @@ public class Superstructure extends SubsystemBase {
     // Context suppliers (set by RobotContainer)
     private Supplier<Pose2d> poseSupplier = () -> new Pose2d();
     private Supplier<ChassisSpeeds> speedsSupplier = () -> new ChassisSpeeds();
+    private Supplier<ChassisSpeeds> accelerationSupplier = () -> new ChassisSpeeds();
 
     private Superstructure() {
         shooter = new Shooter();
@@ -49,15 +50,26 @@ public class Superstructure extends SubsystemBase {
      * Called by RobotContainer to connect swerve data.
      */
     public void setDriveContext(Supplier<Pose2d> pose, Supplier<ChassisSpeeds> speeds) {
+        setDriveContext(pose, speeds, () -> new ChassisSpeeds());
+    }
+
+    /**
+     * Set the pose, chassis speeds, and acceleration suppliers for aiming
+     * calculations.
+     * Acceleration enables predictive shooting.
+     */
+    public void setDriveContext(Supplier<Pose2d> pose, Supplier<ChassisSpeeds> speeds,
+            Supplier<ChassisSpeeds> acceleration) {
         this.poseSupplier = pose;
         this.speedsSupplier = speeds;
+        this.accelerationSupplier = acceleration;
         shooter.setSimulationContext(pose, speeds);
     }
 
     @Override
     public void periodic() {
         // Continuous tracking - update shooter setpoint
-        var solution = AutoAim.calculate(poseSupplier.get(), speedsSupplier.get());
+        var solution = AutoAim.calculate(poseSupplier.get(), speedsSupplier.get(), accelerationSupplier.get());
         shooter.setSetpoint(solution);
     }
 
@@ -109,7 +121,7 @@ public class Superstructure extends SubsystemBase {
      * Use with swerve to get the rotation rate.
      */
     public AimResult getAimResult() {
-        var solution = AutoAim.calculate(poseSupplier.get(), speedsSupplier.get());
+        var solution = AutoAim.calculate(poseSupplier.get(), speedsSupplier.get(), accelerationSupplier.get());
 
         double rotError = solution.targetRobotYaw()
                 .minus(poseSupplier.get().getRotation())

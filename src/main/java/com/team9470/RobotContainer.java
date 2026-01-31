@@ -6,6 +6,7 @@ package com.team9470;
 
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.math.kinematics.ChassisSpeeds;
 
 import com.team9470.subsystems.swerve.Swerve;
 import com.team9470.subsystems.Superstructure;
@@ -38,20 +39,40 @@ public class RobotContainer {
   private final CommandXboxController m_driverController = new CommandXboxController(
       OperatorConstants.kDriverControllerPort);
 
+  // Acceleration Tracking for Predictive Shooting
+  private ChassisSpeeds m_lastChassisSpeeds = new ChassisSpeeds();
+  private static final double LOOP_PERIOD = 0.02; // 20ms standard FRC loop time
+
   public RobotContainer() {
     MaxAngularRate = Math.toRadians(TunerConstants.maxAngularVelocity);
 
-    // Connect swerve context to superstructure
-    m_superstructure.setDriveContext(m_swerve::getPose, m_swerve::getChassisSpeeds);
+    // Connect swerve context to superstructure (with acceleration supplier)
+    m_superstructure.setDriveContext(
+        m_swerve::getPose,
+        m_swerve::getChassisSpeeds,
+        this::calculateAcceleration);
 
     configureBindings();
+  }
+
+  /**
+   * Calculate chassis acceleration for predictive shooting.
+   */
+  private ChassisSpeeds calculateAcceleration() {
+    ChassisSpeeds currentSpeeds = m_swerve.getChassisSpeeds();
+    ChassisSpeeds acceleration = new ChassisSpeeds(
+        (currentSpeeds.vxMetersPerSecond - m_lastChassisSpeeds.vxMetersPerSecond) / LOOP_PERIOD,
+        (currentSpeeds.vyMetersPerSecond - m_lastChassisSpeeds.vyMetersPerSecond) / LOOP_PERIOD,
+        (currentSpeeds.omegaRadiansPerSecond - m_lastChassisSpeeds.omegaRadiansPerSecond) / LOOP_PERIOD);
+    m_lastChassisSpeeds = currentSpeeds;
+    return acceleration;
   }
 
   private void configureBindings() {
     // Right Bumper: Auto-Aim & Shoot
     m_driverController.rightBumper().whileTrue(
         new RunCommand(() -> {
-          // Get aim result from superstructure
+          // Get aim result from superstructure (uses acceleration internally)
           var aim = m_superstructure.getAimResult();
 
           // Dynamic Swerve Limiting - prioritize rotation

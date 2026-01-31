@@ -4,6 +4,7 @@ import com.team9470.FieldConstants;
 import edu.wpi.first.math.geometry.*;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.util.Units;
+import edu.wpi.first.math.MathUtil;
 import static edu.wpi.first.units.Units.*;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import com.team9470.subsystems.shooter.ShooterConstants;
@@ -30,8 +31,12 @@ public class AutoAim {
             Meters.of(0.0),
             ShooterConstants.kShooterOffsetZ);
 
-    // Solver Tunables
-    private static final double RELEASE_DELAY = 0.0; // seconds (Command Latency + Mechanism Delay)
+    // Solver Tunables - Distance-Based Variable Latency
+    // Close range needs more lead time due to high angular velocity sensitivity
+    private static final double CLOSE_RANGE_DELAY = 0.14; // seconds (for distances < 2m)
+    private static final double FAR_RANGE_DELAY = 0.10;   // seconds (for distances > 5m)
+    private static final double CLOSE_RANGE_DIST = 2.0;   // meters
+    private static final double FAR_RANGE_DIST = 5.0;     // meters
     // Limits
     private static final double T_MIN = 0.25;
     private static final double T_MAX = 1.2;
@@ -57,6 +62,10 @@ public class AutoAim {
         return AllianceFlipUtil.apply(BASE_TARGET);
     }
 
+    // Low-pass filter state for acceleration smoothing
+    private static ChassisSpeeds filteredAcceleration = new ChassisSpeeds();
+    private static final double ACCEL_FILTER_ALPHA = 0.3; // Lower = smoother, Higher = more responsive
+
     /**
      * Calculates the shooting solution using the Kinematic Solver.
      * Assumes zero acceleration if not provided.
@@ -64,6 +73,23 @@ public class AutoAim {
     public static ShootingSolution calculate(Pose2d robotPose, ChassisSpeeds robotSpeeds) {
         // Assume zero acceleration
         return solve(robotPose, robotSpeeds, new ChassisSpeeds());
+    }
+
+    /**
+     * Calculates the shooting solution with acceleration feedforward.
+     * Use this overload when tracking robot acceleration for better prediction.
+     * @param robotPose Current robot pose
+     * @param robotSpeeds Current robot velocity (robot-relative)
+     * @param robotAcceleration Current robot acceleration (robot-relative)
+     */
+    public static ShootingSolution calculate(Pose2d robotPose, ChassisSpeeds robotSpeeds, ChassisSpeeds robotAcceleration) {
+        // Apply low-pass filter to acceleration to reduce jitter
+        filteredAcceleration = new ChassisSpeeds(
+            filteredAcceleration.vxMetersPerSecond * (1 - ACCEL_FILTER_ALPHA) + robotAcceleration.vxMetersPerSecond * ACCEL_FILTER_ALPHA,
+            filteredAcceleration.vyMetersPerSecond * (1 - ACCEL_FILTER_ALPHA) + robotAcceleration.vyMetersPerSecond * ACCEL_FILTER_ALPHA,
+            filteredAcceleration.omegaRadiansPerSecond * (1 - ACCEL_FILTER_ALPHA) + robotAcceleration.omegaRadiansPerSecond * ACCEL_FILTER_ALPHA
+        );
+        return solve(robotPose, robotSpeeds, filteredAcceleration);
     }
 
     /**
@@ -76,23 +102,62 @@ public class AutoAim {
 
         Translation3d target = getTarget();
 
-        // --- Step 1: Predict Robot State at Release ---
-        double dt = RELEASE_DELAY;
+        // --- Step 1: Calculate Distance-Based Variable Latency ---
+        double distanceToTarget = p_r.getTranslation().getDistance(target.toTranslation2d());
+        double dt = MathUtil.interpolate(
+            CLOSE_RANGE_DELAY, 
+            FAR_RANGE_DELAY, 
+            MathUtil.clamp((distanceToTarget - CLOSE_RANGE_DIST) / (FAR_RANGE_DIST - CLOSE_RANGE_DIST), 0.0, 1.0)
+        );
+        
+        // Log the effective delay for tuning
+        SmartDashboard.putNumber("Shooter/Solver/EffectiveDelay", dt);
+        SmartDashboard.putNumber("Shooter/Solver/DistanceToTarget", distanceToTarget);
 
-        // Predict Heading: psi' = psi + omega*dt
+        // --- Step 2: Predict Robot State at Release using Arc-Based Motion ---
         Rotation2d psi = p_r.getRotation();
         double omega = v_r.omegaRadiansPerSecond;
-        Rotation2d psi_prime = psi.plus(new Rotation2d(omega * dt)); // Ignore alpha for now
+        
+        // Predict Heading: psi' = psi + omega*dt
+        Rotation2d psi_prime = psi.plus(new Rotation2d(omega * dt));
 
-        // Predict Velocity: v' = v + a*dt (Field Relative)
-        // Convert Robot-Relative inputs to Field-Relative vectors
-        Translation2d v_robot_vec = new Translation2d(v_r.vxMetersPerSecond, v_r.vyMetersPerSecond).rotateBy(psi);
-        Translation2d a_robot_vec = new Translation2d(a_r.vxMetersPerSecond, a_r.vyMetersPerSecond).rotateBy(psi);
+        // Arc-Based Motion Prediction (Twist Exponential / Discretization)
+        // When rotating, the robot moves in an arc, not a straight line.
+        // Use sinc functions to properly integrate the curved path.
+        double vx_robot = v_r.vxMetersPerSecond;
+        double vy_robot = v_r.vyMetersPerSecond;
+        double ax_robot = a_r.vxMetersPerSecond;
+        double ay_robot = a_r.vyMetersPerSecond;
+        
+        // Discretized velocity components (accounts for rotation during motion)
+        double vx_discrete, vy_discrete;
+        if (Math.abs(omega) < 1e-9) {
+            // No rotation - use linear approximation
+            vx_discrete = vx_robot;
+            vy_discrete = vy_robot;
+        } else {
+            // Arc motion - use twist exponential formulas
+            // These formulas compute the average velocity direction over the arc
+            double halfAngle = omega * dt / 2.0;
+            double sinc = Math.sin(halfAngle) / halfAngle; // sinc(theta/2)
+            double cosc = (1.0 - Math.cos(halfAngle)) / halfAngle; // (1-cos(theta/2))/(theta/2)
+            
+            // Discretized velocities that account for the arc
+            vx_discrete = vx_robot * sinc - vy_robot * cosc;
+            vy_discrete = vx_robot * cosc + vy_robot * sinc;
+        }
+        
+        // Convert discretized robot-relative velocity to field-relative
+        Translation2d v_discrete_field = new Translation2d(vx_discrete, vy_discrete).rotateBy(psi);
+        Translation2d a_robot_vec = new Translation2d(ax_robot, ay_robot).rotateBy(psi);
+        
+        // Predict velocity at release time (for shooter velocity compensation)
+        Translation2d v_robot_vec = new Translation2d(vx_robot, vy_robot).rotateBy(psi);
         Translation2d v_prime = v_robot_vec.plus(a_robot_vec.times(dt));
 
-        // Predict Position: p' = p + v*dt + 0.5*a*dt^2
+        // Predict Position using arc-corrected velocity: p' = p + v_discrete*dt + 0.5*a*dt^2
         Translation2d p_prime_xy = p_r.getTranslation()
-                .plus(v_robot_vec.times(dt))
+                .plus(v_discrete_field.times(dt))
                 .plus(a_robot_vec.times(0.5 * dt * dt));
 
         // Predict Shooter Exit Point in Field Frame
