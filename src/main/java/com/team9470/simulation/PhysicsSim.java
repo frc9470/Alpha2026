@@ -1,5 +1,6 @@
 package com.team9470.simulation;
 
+import com.team9470.FieldConstants;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.util.Units;
 import java.util.ArrayList;
@@ -432,8 +433,8 @@ public class PhysicsSim {
         }
 
         private void resolveFieldCollision(double dt) {
-            double fieldLen = 16.54;
-            double fieldWidth = 8.05;
+            double fieldLen = FieldConstants.fieldLength;
+            double fieldWidth = FieldConstants.fieldWidth;
             double ballRadius = RADIUS;
             double restitution = 0.4;
 

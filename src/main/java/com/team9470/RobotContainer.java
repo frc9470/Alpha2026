@@ -8,11 +8,9 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 import com.team9470.subsystems.swerve.Swerve;
-// import com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType;
+import com.team9470.subsystems.Superstructure;
 import com.ctre.phoenix6.swerve.SwerveModule;
 import com.ctre.phoenix6.swerve.SwerveRequest;
-import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import com.team9470.Constants.OperatorConstants;
@@ -21,78 +19,50 @@ import static edu.wpi.first.units.Units.*;
 public class RobotContainer {
 
   private double MaxSpeed = TunerConstants.kSpeedAt12Volts.in(MetersPerSecond);
-  private double MaxAngularRate = TunerConstants.maxAngularVelocity; // Radians per second? No, constant is in degrees?
-                                                                     // Wait, let me check TunerConstants again.
-  // TunerConstants.maxAngularVelocity is 572.96. Assuming degrees based on
-  // variable name comment in typical TunerX gen.
-  // SwerveRequest.FieldCentric expects Radians per second for rotational rate.
-  // So MaxAngularRate should be Math.toRadians(TunerConstants.maxAngularVelocity)
-  // if that constant is degrees.
+  private double MaxAngularRate = TunerConstants.maxAngularVelocity;
 
+  // Swerve requests
   private final SwerveRequest.FieldCentric drive = new SwerveRequest.FieldCentric()
       .withDeadband(MaxSpeed * 0.1).withRotationalDeadband(MaxAngularRate * 0.1)
       .withDriveRequestType(SwerveModule.DriveRequestType.OpenLoopVoltage);
 
-  // Separate request for auto-aim to ensure no interference
   private final SwerveRequest.FieldCentric autoAimDrive = new SwerveRequest.FieldCentric()
-      .withDeadband(MaxSpeed * 0.1).withRotationalDeadband(0.0) // No deadband for PID
+      .withDeadband(MaxSpeed * 0.1).withRotationalDeadband(0.0)
       .withDriveRequestType(SwerveModule.DriveRequestType.OpenLoopVoltage);
 
+  // Subsystems
   private final Swerve m_swerve = Swerve.getInstance();
+  private final Superstructure m_superstructure = Superstructure.getInstance();
 
-  public final com.team9470.subsystems.shooter.Shooter m_shooter = new com.team9470.subsystems.shooter.Shooter();
-  private final com.team9470.subsystems.intake.Intake m_intake = com.team9470.subsystems.intake.Intake.getInstance();
+  // Controllers
   private final CommandXboxController m_driverController = new CommandXboxController(
       OperatorConstants.kDriverControllerPort);
 
   public RobotContainer() {
     MaxAngularRate = Math.toRadians(TunerConstants.maxAngularVelocity);
 
-    m_shooter.setSimulationContext(m_swerve::getPose, m_swerve::getChassisSpeeds);
+    // Connect swerve context to superstructure
+    m_superstructure.setDriveContext(m_swerve::getPose, m_swerve::getChassisSpeeds);
 
     configureBindings();
   }
 
   private void configureBindings() {
-    // Right Bumper: Auto-Aim & Rapid Fire
+    // Right Bumper: Auto-Aim & Shoot
     m_driverController.rightBumper().whileTrue(
         new RunCommand(() -> {
-          // Calculate Aim
-          var solution = com.team9470.util.AutoAim.calculate(
-              m_swerve.getPose(),
-              m_swerve.getChassisSpeeds());
+          // Get aim result from superstructure
+          var aim = m_superstructure.getAimResult();
 
-          // Aim Robot
-          double rotError = solution.targetRobotYaw().minus(m_swerve.getPose().getRotation()).getRadians();
-          double rotCmd = (rotError * 12.0) + solution.targetOmega(); // Add Feedforward
-
-          // Fire if aligned
-          boolean isAligned = Math.abs(rotError) < Math.toRadians(3.0);
-
-          // Telemetry
-          edu.wpi.first.wpilibj.smartdashboard.SmartDashboard.putBoolean("Debug/ShootCommandRunning", true);
-          edu.wpi.first.wpilibj.smartdashboard.SmartDashboard.putNumber("Debug/RotErrorDeg",
-              edu.wpi.first.math.util.Units.radiansToDegrees(rotError));
-          edu.wpi.first.wpilibj.smartdashboard.SmartDashboard.putNumber("Debug/TargetYawDeg",
-              solution.targetRobotYaw().getDegrees());
-          edu.wpi.first.wpilibj.smartdashboard.SmartDashboard.putNumber("Debug/CurrentYawDeg",
-              m_swerve.getPose().getRotation().getDegrees());
-          edu.wpi.first.wpilibj.smartdashboard.SmartDashboard.putNumber("Debug/RotCmd", rotCmd);
-          edu.wpi.first.wpilibj.smartdashboard.SmartDashboard.putBoolean("Debug/IsAligned", isAligned);
-
-          m_shooter.setFiring(isAligned);
-
-          // Dynamic Swerve Limiting
-          // Prioritize Rotation: Slow down translation if rotation demands high wheel
-          // speed
-          final double kDriveRadius = 0.45; // meters (hypot(13.5, 11.5) inches)
-          double rotCost = Math.abs(rotCmd) * kDriveRadius;
-          double transLimit = Math.max(0.0, (MaxSpeed - rotCost) * 0.80); // 20% Overhead Safety Margin
+          // Dynamic Swerve Limiting - prioritize rotation
+          final double kDriveRadius = 0.45; // meters
+          double rotCost = Math.abs(aim.rotationCommand()) * kDriveRadius;
+          double transLimit = Math.max(0.0, (MaxSpeed - rotCost) * 0.80);
 
           double vX = -m_driverController.getLeftY() * MaxSpeed;
           double vY = -m_driverController.getLeftX() * MaxSpeed;
 
-          // Desaturate Translation
+          // Desaturate translation
           double vMag = Math.hypot(vX, vY);
           if (vMag > transLimit) {
             double scale = transLimit / vMag;
@@ -100,40 +70,33 @@ public class RobotContainer {
             vY *= scale;
           }
 
-          SmartDashboard.putNumber("Debug/Limiting/RotCost", rotCost);
-          SmartDashboard.putNumber("Debug/Limiting/TransLimit", transLimit);
-          SmartDashboard.putNumber("Debug/Limiting/OriginalMag", vMag);
-          SmartDashboard.putNumber("Debug/Limiting/FinalMag", Math.hypot(vX, vY));
+          // Telemetry
+          SmartDashboard.putBoolean("Drive/AutoAimActive", true);
+          SmartDashboard.putNumber("Drive/RotCmd", aim.rotationCommand());
+          SmartDashboard.putNumber("Drive/TransLimit", transLimit);
 
-          // Drive
-          m_swerve.setControl(autoAimDrive.withVelocityX(vX)
+          // Drive with auto-aim rotation
+          m_swerve.setControl(autoAimDrive
+              .withVelocityX(vX)
               .withVelocityY(vY)
-              .withRotationalRate(rotCmd));
-        }, m_swerve).finallyDo(() -> {
-          m_shooter.setFiring(false);
-          edu.wpi.first.wpilibj.smartdashboard.SmartDashboard.putBoolean("Debug/ShootCommandRunning", false);
-        }));
+              .withRotationalRate(aim.rotationCommand()));
 
-    // Bind Left Trigger to Intake Deploy
-    m_driverController.leftTrigger().whileTrue(m_intake.getDeployCommand()); // Added
+        }, m_swerve)
+            .alongWith(m_superstructure.aimAndShootCommand())
+            .finallyDo(() -> SmartDashboard.putBoolean("Drive/AutoAimActive", false)));
 
-    // Continuous Setpoint Update (Tracking)
-    m_shooter.setDefaultCommand(new RunCommand(() -> {
-      var solution = com.team9470.util.AutoAim.calculate(
-          m_swerve.getPose(),
-          m_swerve.getChassisSpeeds());
-      m_shooter.setSetpoint(solution);
-    }, m_shooter));
+    // Left Trigger: Intake
+    m_driverController.leftTrigger().whileTrue(m_superstructure.intakeCommand());
 
     // Default Drive (Manual)
     m_swerve.setDefaultCommand(
-        m_swerve.applyRequest(() -> drive.withVelocityX(-m_driverController.getLeftY() * MaxSpeed)
+        m_swerve.applyRequest(() -> drive
+            .withVelocityX(-m_driverController.getLeftY() * MaxSpeed)
             .withVelocityY(-m_driverController.getLeftX() * MaxSpeed)
             .withRotationalRate(-m_driverController.getRightX() * MaxAngularRate)));
   }
 
   public Command getAutonomousCommand() {
-
     return null;
   }
 }

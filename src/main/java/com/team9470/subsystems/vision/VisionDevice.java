@@ -2,11 +2,11 @@ package com.team9470.subsystems.vision;
 
 import com.ctre.phoenix6.Utils;
 
+import com.team9470.FieldConstants;
 import com.team9470.subsystems.swerve.Swerve;
 import com.team9470.util.LogUtil;
 import com.team9470.util.Util;
 import edu.wpi.first.apriltag.AprilTagFieldLayout;
-import edu.wpi.first.apriltag.AprilTagFields;
 import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.Nat;
 import edu.wpi.first.math.Pair;
@@ -28,10 +28,7 @@ public class VisionDevice {
 
     private final PhotonCamera photonCamera;
     private final PhotonPoseEstimator photonPoseEstimator;
-    // private static final AprilTagFieldLayout aprilTagFieldLayout =
-    // AprilTagFields.k2024Crescendo.loadAprilTagLayoutField();
-    private static final AprilTagFieldLayout aprilTagFieldLayout = AprilTagFieldLayout
-            .loadField(AprilTagFields.kDefaultField);
+    private static final AprilTagFieldLayout aprilTagFieldLayout = FieldConstants.defaultAprilTagType.getLayout();
 
     public VisionDevice(String name, Transform3d transform) {
         this.photonCamera = new PhotonCamera(name);
@@ -181,10 +178,10 @@ public class VisionDevice {
     private static final Map<Integer, Pose2d> tagPoses2d = new HashMap<>();
 
     static {
-        for (int i = 1; i <= 22; i++) { // TODO: Replace with FieldConstants.aprilTagCount
+        for (int i = 1; i <= FieldConstants.aprilTagCount; i++) {
             tagPoses2d.put(
                     i,
-                    AprilTagFieldLayout.loadField(AprilTagFields.k2025ReefscapeWelded)
+                    FieldConstants.defaultAprilTagType.getLayout()
                             .getTagPose(i)
                             .map(Pose3d::toPose2d)
                             .orElse(new Pose2d()));
