@@ -7,27 +7,41 @@ import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 
-import edu.wpi.first.math.system.plant.DCMotor;
+import com.team9470.Robot;
+import com.team9470.simulation.IntakeSimulation;
+
 import edu.wpi.first.math.util.Units;
-import edu.wpi.first.wpilibj.simulation.SingleJointedArmSim;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
+/**
+ * Intake subsystem - controls pivot arm and roller.
+ * This class contains only the logic that runs on both real robot and
+ * simulation.
+ * All physics simulation is handled by IntakeSimulation.
+ */
 public class Intake extends SubsystemBase {
-    private static Intake m_instance;
 
-    private final TalonFX m_pivot = new TalonFX(IntakeConstants.kIntakePivotId);
-    private final TalonFX m_roller = new TalonFX(IntakeConstants.kIntakeRollerId);
+    private static Intake instance;
 
-    private final SingleJointedArmSim m_pivotSim;
+    public static Intake getInstance() {
+        if (instance == null) {
+            instance = new Intake();
+        }
+        return instance;
+    }
+
+    // Hardware
+    private final TalonFX pivot = new TalonFX(IntakeConstants.kIntakePivotId);
+    private final TalonFX roller = new TalonFX(IntakeConstants.kIntakeRollerId);
 
     // Controls
-    private final MotionMagicVoltage m_mmReq = new MotionMagicVoltage(0).withSlot(0);
-    private final VoltageOut m_voltReq = new VoltageOut(0);
+    private final MotionMagicVoltage mmRequest = new MotionMagicVoltage(0).withSlot(0);
+    private final VoltageOut voltRequest = new VoltageOut(0);
 
     // State
-    private boolean m_deployed = false;
+    private boolean deployed = false;
 
     private Intake() {
         // --- Pivot Config ---
@@ -35,127 +49,79 @@ public class Intake extends SubsystemBase {
         pivotConfig.Slot0.kP = IntakeConstants.kIntakePivotKp;
         pivotConfig.Slot0.kV = IntakeConstants.kIntakePivotKv;
         pivotConfig.Slot0.kA = IntakeConstants.kIntakePivotKa;
-        pivotConfig.Slot0.kG = IntakeConstants.kIntakePivotKg; // Gravity compensation
+        pivotConfig.Slot0.kG = IntakeConstants.kIntakePivotKg;
 
-        // Wait, Phoenix 6 PID is in Rotations. Constants are likely Rads logic usually.
-        // Let's assume Constants values are appropriate directly or convert.
-        // If Constant is 4 rad/s -> ~0.63 rot/s. Phoenix expects RPS.
         pivotConfig.MotionMagic.MotionMagicCruiseVelocity = Units
                 .radiansToRotations(IntakeConstants.kIntakeMotionMagicCruiseVel);
         pivotConfig.MotionMagic.MotionMagicAcceleration = Units
                 .radiansToRotations(IntakeConstants.kIntakeMotionMagicAccel);
-        pivotConfig.MotionMagic.MotionMagicJerk = 0; // Disable Jerk (infinite)
+        pivotConfig.MotionMagic.MotionMagicJerk = 0;
 
         pivotConfig.MotorOutput.NeutralMode = NeutralModeValue.Brake;
         pivotConfig.MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive;
         pivotConfig.Feedback.SensorToMechanismRatio = IntakeConstants.kIntakePivotGearRatio;
 
-        m_pivot.getConfigurator().apply(pivotConfig);
-        m_pivot.setPosition(0); // Start retracted
+        pivot.getConfigurator().apply(pivotConfig);
+        pivot.setPosition(0);
 
         // --- Roller Config ---
         TalonFXConfiguration rollerConfig = new TalonFXConfiguration();
         rollerConfig.MotorOutput.NeutralMode = NeutralModeValue.Coast;
-        m_roller.getConfigurator().apply(rollerConfig);
-
-        // --- Sim ---
-        m_pivotSim = new SingleJointedArmSim(
-                DCMotor.getKrakenX60(1),
-                IntakeConstants.kIntakePivotGearRatio,
-                SingleJointedArmSim.estimateMOI(IntakeConstants.kIntakeLength,
-                        IntakeConstants.kIntakeMass),
-                IntakeConstants.kIntakeLength,
-                0.0, // Min Angle
-                Math.PI, // Max Angle
-                true, // Simulate gravity
-                0.0 // Start angle
-        );
-    }
-
-    public static Intake getInstance() {
-        if (m_instance == null) {
-            m_instance = new Intake();
-        }
-        return m_instance;
+        roller.getConfigurator().apply(rollerConfig);
     }
 
     // --- Commands ---
+
     public void setDeployed(boolean deployed) {
-        m_deployed = deployed;
+        this.deployed = deployed;
     }
 
     public Command getDeployCommand() {
         return this.startEnd(
                 () -> setDeployed(true),
-                () -> setDeployed(false));
+                () -> setDeployed(false))
+                .withName("Intake Deploy");
     }
 
     @Override
     public void periodic() {
-        // Control Logic
-        double targetAngle = m_deployed ? IntakeConstants.kIntakeDeployAngle
-                : IntakeConstants.kIntakeRetractAngle;
+        // Pivot control
+        double targetAngle = deployed ? IntakeConstants.kIntakeDeployAngle : IntakeConstants.kIntakeRetractAngle;
         double targetRot = Units.radiansToRotations(targetAngle);
+        pivot.setControl(mmRequest.withPosition(targetRot));
 
-        m_pivot.setControl(m_mmReq.withPosition(targetRot));
-
-        // Roller Logic
-        if (m_deployed) {
-            m_roller.setControl(m_voltReq.withOutput(IntakeConstants.kIntakeRollerVoltage));
+        // Roller control
+        if (deployed) {
+            roller.setControl(voltRequest.withOutput(IntakeConstants.kIntakeRollerVoltage));
         } else {
-            m_roller.setControl(m_voltReq.withOutput(0));
+            roller.setControl(voltRequest.withOutput(0));
         }
 
         // Telemetry
-        SmartDashboard.putNumber("Intake/AngleDeg", Units.rotationsToDegrees(m_pivot.getPosition().getValueAsDouble()));
-        SmartDashboard.putBoolean("Intake/Deployed", m_deployed);
+        SmartDashboard.putNumber("Intake/AngleDeg", Units.rotationsToDegrees(pivot.getPosition().getValueAsDouble()));
+        SmartDashboard.putBoolean("Intake/Deployed", deployed);
 
-        // Update Visualization
-        m_arm.setAngle(Units.rotationsToDegrees(m_pivot.getPosition().getValueAsDouble()));
+        // Update visualization (works in both real and sim)
+        if (Robot.isSimulation()) {
+            IntakeSimulation.getInstance().updateVisualization(pivot.getPosition().getValueAsDouble());
+        }
     }
 
     @Override
     public void simulationPeriodic() {
-        // Feed voltage to Sim
-        double voltage = m_pivot.getSimState().getMotorVoltage();
-        m_pivotSim.setInput(voltage);
-        m_pivotSim.update(0.020);
-
-        // Update Motor Sim State
-        m_pivot.getSimState().setRawRotorPosition(
-                Units.radiansToRotations(m_pivotSim.getAngleRads()) * IntakeConstants.kIntakePivotGearRatio);
-        m_pivot.getSimState().setRotorVelocity(
-                Units.radiansToRotations(m_pivotSim.getVelocityRadPerSec())
-                        * IntakeConstants.kIntakePivotGearRatio);
-
-        // Update Roller Sim Speed (Basic)
-        m_roller.getSimState().setSupplyVoltage(12.0);
-        m_roller.getSimState().setRotorVelocity(m_deployed ? 60.0 : 0.0); // 60 RPS ~ 3600 RPM
+        IntakeSimulation.getInstance().update(pivot, roller, deployed);
     }
 
-    // --- Visualization ---
-    private final edu.wpi.first.wpilibj.smartdashboard.Mechanism2d m_mech = new edu.wpi.first.wpilibj.smartdashboard.Mechanism2d(
-            1.0, 1.0);
-    private final edu.wpi.first.wpilibj.smartdashboard.MechanismRoot2d m_root = m_mech.getRoot("Pivot", 0.35, 0.2); // x=0.35,
-                                                                                                                    // z=0.2
-                                                                                                                    // based
-                                                                                                                    // on
-                                                                                                                    // sim
-    private final edu.wpi.first.wpilibj.smartdashboard.MechanismLigament2d m_arm = m_root.append(
-            new edu.wpi.first.wpilibj.smartdashboard.MechanismLigament2d("Arm", IntakeConstants.kIntakeLength,
-                    90));
+    // --- Accessors for physics ---
 
-    {
-        SmartDashboard.putData("Intake/Mechanism2d", m_mech);
-        m_arm.setColor(new edu.wpi.first.wpilibj.util.Color8Bit(edu.wpi.first.wpilibj.util.Color.kYellow));
-    }
-
-    // --- Physics Interface ---
     public boolean isRunning() {
-        return m_deployed; // Simplified: "Running" if deployed
+        return deployed;
     }
 
     public double getPivotAngle() {
-        return Units.rotationsToRadians(m_pivot.getPosition().getValueAsDouble());
+        if (Robot.isSimulation()) {
+            return IntakeSimulation.getInstance().getAngleRad();
+        }
+        return Units.rotationsToRadians(pivot.getPosition().getValueAsDouble());
     }
 }

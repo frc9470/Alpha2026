@@ -1,5 +1,6 @@
 package com.team9470.util;
 
+import com.team9470.FieldConstants;
 import edu.wpi.first.math.geometry.*;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.util.Units;
@@ -13,15 +14,14 @@ public class AutoAim {
     // --- Constants ---
     private static final double GRAVITY = 9.81; // m/s^2
 
-    // Field Geometry
-    private static final double RIM_HEIGHT_METERS = Units.inchesToMeters(72.0);
-    private static final double BALL_RADIUS_METERS = Units.inchesToMeters(2.75);
-    private static final double GOAL_Z = RIM_HEIGHT_METERS + BALL_RADIUS_METERS; // Target Z
+    // Field Geometry (from FieldConstants)
+    private static final double BALL_RADIUS_METERS = FieldConstants.GamePiece.ballRadius;
+    private static final double GOAL_Z = FieldConstants.Hub.height + BALL_RADIUS_METERS; // Target Z
 
-    // Field Center Target (Reef Center)
+    // Field Center Target (Hub center point + ball clearance)
     private static final Translation3d BASE_TARGET = new Translation3d(
-            Units.inchesToMeters(182.111250),
-            Units.inchesToMeters(158.843750),
+            FieldConstants.Hub.topCenterPoint.getX(),
+            FieldConstants.Hub.topCenterPoint.getY(),
             GOAL_Z);
 
     // Shooter Configuration
