@@ -5,7 +5,6 @@ import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.units.measure.Distance;
 import edu.wpi.first.units.measure.Mass;
 import edu.wpi.first.units.measure.MomentOfInertia;
-import edu.wpi.first.units.measure.Voltage;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 
@@ -33,7 +32,14 @@ public class ShooterConstants {
         public static final Distance kShooterOffsetX = Meters.of(0.2); // Forward from robot center
         public static final Distance kShooterOffsetZ = Meters.of(0.5); // Up from center
 
-        // PID / FF Gains
+        // ==================== HOMING ====================
+        // Hood homes to hardstop at minimum angle (0 degrees)
+        public static final double kHoodHomingVoltage = -2.0; // Negative = toward min
+        public static final double kHoodStallCurrentThreshold = 15.0; // Amps
+        public static final double kHoodStallTimeThreshold = 0.1; // Seconds at stall
+        public static final double kHoodHomePosition = 0.0; // Rotations at hardstop
+
+        // Motor Configs
         public static final TalonFXConfiguration kFlywheelConfig = new TalonFXConfiguration();
         public static final TalonFXConfiguration kHoodConfig = new TalonFXConfiguration();
 

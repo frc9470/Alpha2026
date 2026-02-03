@@ -106,4 +106,46 @@ public class Intake extends SubsystemBase {
         }
         return Units.rotationsToRadians(pivot.getPosition().getValueAsDouble());
     }
+
+    // ==================== HOMING ====================
+
+    private boolean isHomed = false;
+    private final VoltageOut homingVoltage = new VoltageOut(0);
+
+    /**
+     * Returns whether the pivot has been homed.
+     */
+    public boolean isHomed() {
+        return isHomed;
+    }
+
+    /**
+     * Command to home the pivot to hardstop (retract position).
+     * Drives pivot at homing voltage until stall is detected, then zeros encoder.
+     */
+    public Command homePivotCommand() {
+        return new edu.wpi.first.wpilibj2.command.FunctionalCommand(
+                // Init
+                () -> {
+                    isHomed = false;
+                },
+                // Execute
+                () -> {
+                    pivot.setControl(homingVoltage.withOutput(IntakeConstants.kHomingVoltage));
+                },
+                // End
+                (interrupted) -> {
+                    pivot.setControl(homingVoltage.withOutput(0));
+                    if (!interrupted) {
+                        pivot.setPosition(IntakeConstants.kHomePosition);
+                        isHomed = true;
+                    }
+                },
+                // IsFinished
+                () -> {
+                    double current = pivot.getSupplyCurrent().getValueAsDouble();
+                    return current > IntakeConstants.kStallCurrentThreshold;
+                },
+                this).withTimeout(3.0).withName("Intake Homing");
+    }
 }

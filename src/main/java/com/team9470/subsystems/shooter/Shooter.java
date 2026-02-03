@@ -226,4 +226,46 @@ public class Shooter extends SubsystemBase {
             ProjectileSimulation.getInstance().seedField();
         }
     }
+
+    // ==================== HOMING ====================
+
+    private boolean isHomed = false;
+    private final com.ctre.phoenix6.controls.VoltageOut homingVoltage = new com.ctre.phoenix6.controls.VoltageOut(0);
+
+    /**
+     * Returns whether the hood has been homed.
+     */
+    public boolean isHomed() {
+        return isHomed;
+    }
+
+    /**
+     * Command to home the hood to hardstop.
+     * Drives hood at homing voltage until stall is detected, then zeros encoder.
+     */
+    public edu.wpi.first.wpilibj2.command.Command homeHoodCommand() {
+        return new edu.wpi.first.wpilibj2.command.FunctionalCommand(
+                // Init
+                () -> {
+                    isHomed = false;
+                },
+                // Execute
+                () -> {
+                    hoodMotor.setControl(homingVoltage.withOutput(ShooterConstants.kHoodHomingVoltage));
+                },
+                // End
+                (interrupted) -> {
+                    hoodMotor.setControl(homingVoltage.withOutput(0));
+                    if (!interrupted) {
+                        hoodMotor.setPosition(ShooterConstants.kHoodHomePosition);
+                        isHomed = true;
+                    }
+                },
+                // IsFinished
+                () -> {
+                    double current = hoodMotor.getSupplyCurrent().getValueAsDouble();
+                    return current > ShooterConstants.kHoodStallCurrentThreshold;
+                },
+                this).withTimeout(3.0).withName("Hood Homing");
+    }
 }

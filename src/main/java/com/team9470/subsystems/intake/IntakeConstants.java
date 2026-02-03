@@ -9,7 +9,7 @@ public class IntakeConstants {
     // Physical Constants
     public static final double kPivotGearRatio = 20.0;
 
-    // Setpoints
+    // Setpoints (radians, mechanism output)
     public static final double kDeployAngle = Math.toRadians(-25.0); // Down/Floor
     public static final double kRetractAngle = Math.toRadians(90.0); // Up/Stowed
     public static final double kRollerVoltage = 8.0;
@@ -17,6 +17,13 @@ public class IntakeConstants {
     // Simulation
     public static final double kIntakeLength = 0.3; // meters
     public static final double kIntakeMass = 4.0; // kg
+
+    // ==================== HOMING ====================
+    // Intake homes to hardstop at retract position (90 degrees up)
+    public static final double kHomingVoltage = 3.0; // Positive = toward retract/up
+    public static final double kStallCurrentThreshold = 20.0; // Amps
+    public static final double kStallTimeThreshold = 0.1; // Seconds at stall
+    public static final double kHomePosition = 0.25; // Rotations at hardstop (90 deg = 0.25 rot)
 
     // Motor Configs
     public static final TalonFXConfiguration kPivotConfig = new TalonFXConfiguration();
