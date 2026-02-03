@@ -7,6 +7,7 @@ import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 
+import com.team9470.Ports;
 import com.team9470.Robot;
 import com.team9470.simulation.IntakeSimulation;
 
@@ -33,8 +34,8 @@ public class Intake extends SubsystemBase {
     }
 
     // Hardware
-    private final TalonFX pivot = new TalonFX(IntakeConstants.kIntakePivotId);
-    private final TalonFX roller = new TalonFX(IntakeConstants.kIntakeRollerId);
+    private final TalonFX pivot = new TalonFX(Ports.INTAKE_PIVOT.getDeviceNumber());
+    private final TalonFX roller = new TalonFX(Ports.INTAKE_ROLLER.getDeviceNumber());
 
     // Controls
     private final MotionMagicVoltage mmRequest = new MotionMagicVoltage(0).withSlot(0);

@@ -10,12 +10,8 @@ import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 
 public class ShooterConstants {
-        // Hardware IDs
-        public static final int kFlywheelMasterId = 50;
-        public static final int kFlywheelSlaveId = 51;
-        public static final int kFlywheelSlave2Id = 53;
-        public static final int kFlywheelSlave3Id = 54;
-        public static final int kHoodMotorId = 52;
+        // NOTE: CAN IDs are in Ports.java (FLYWHEEL_MASTER, FLYWHEEL_SLAVE,
+        // FLYWHEEL_SLAVE_2, FLYWHEEL_SLAVE_3, HOOD_MOTOR)
 
         // Physical Constants
         public static final double kFlywheelGearRatio = 1.5;

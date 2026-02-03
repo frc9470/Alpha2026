@@ -6,6 +6,7 @@ import com.ctre.phoenix6.controls.PositionVoltage;
 import com.ctre.phoenix6.controls.VelocityVoltage;
 import com.ctre.phoenix6.hardware.TalonFX;
 
+import com.team9470.Ports;
 import com.team9470.Robot;
 import com.team9470.simulation.ProjectileSimulation;
 import com.team9470.util.AutoAim.ShootingSolution;
@@ -29,11 +30,11 @@ import java.util.function.Supplier;
 public class Shooter extends SubsystemBase {
 
     // Hardware
-    private final TalonFX flywheelMaster = new TalonFX(ShooterConstants.kFlywheelMasterId);
-    private final TalonFX flywheelSlave = new TalonFX(ShooterConstants.kFlywheelSlaveId);
-    private final TalonFX flywheelSlave2 = new TalonFX(ShooterConstants.kFlywheelSlave2Id);
-    private final TalonFX flywheelSlave3 = new TalonFX(ShooterConstants.kFlywheelSlave3Id);
-    private final TalonFX hoodMotor = new TalonFX(ShooterConstants.kHoodMotorId);
+    private final TalonFX flywheelMaster = new TalonFX(Ports.FLYWHEEL_MASTER.getDeviceNumber());
+    private final TalonFX flywheelSlave = new TalonFX(Ports.FLYWHEEL_SLAVE.getDeviceNumber());
+    private final TalonFX flywheelSlave2 = new TalonFX(Ports.FLYWHEEL_SLAVE_2.getDeviceNumber());
+    private final TalonFX flywheelSlave3 = new TalonFX(Ports.FLYWHEEL_SLAVE_3.getDeviceNumber());
+    private final TalonFX hoodMotor = new TalonFX(Ports.HOOD_MOTOR.getDeviceNumber());
 
     // Controls
     private final VelocityVoltage flywheelRequest = new VelocityVoltage(0);

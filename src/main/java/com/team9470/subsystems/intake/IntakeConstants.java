@@ -1,9 +1,7 @@
 package com.team9470.subsystems.intake;
 
 public class IntakeConstants {
-    // --- Intake ---
-    public static final int kIntakePivotId = 60;
-    public static final int kIntakeRollerId = 61;
+    // NOTE: CAN IDs are in Ports.java (INTAKE_PIVOT, INTAKE_ROLLER)
 
     public static final double kIntakePivotGearRatio = 20.0; // Estimate
     public static final double kIntakePivotKp = 40.0;

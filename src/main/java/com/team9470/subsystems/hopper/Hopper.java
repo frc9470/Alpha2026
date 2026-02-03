@@ -7,6 +7,8 @@ import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 
+import com.team9470.Ports;
+
 import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -43,8 +45,8 @@ public class Hopper extends SubsystemBase {
     private final StatusSignal<Current> motor1Current;
 
     private Hopper() {
-        motor1 = new TalonFX(kHopperMotor1Id);
-        motor2 = new TalonFX(kHopperMotor2Id);
+        motor1 = new TalonFX(Ports.HOPPER_MOTOR_1.getDeviceNumber());
+        motor2 = new TalonFX(Ports.HOPPER_MOTOR_2.getDeviceNumber());
 
         // Configure motors
         TalonFXConfiguration config = new TalonFXConfiguration();
