@@ -48,16 +48,9 @@ public class Hopper extends SubsystemBase {
         motor1 = new TalonFX(Ports.HOPPER_MOTOR_1.getDeviceNumber());
         motor2 = new TalonFX(Ports.HOPPER_MOTOR_2.getDeviceNumber());
 
-        // Configure motors
-        TalonFXConfiguration config = new TalonFXConfiguration();
-        config.MotorOutput.NeutralMode = NeutralModeValue.Brake;
-        config.CurrentLimits.withSupplyCurrentLimit(40.0).withSupplyCurrentLimitEnable(true);
-
-        motor1.getConfigurator().apply(config);
-
-        // Motor 2 inverted for opposing roller direction
-        config.MotorOutput.Inverted = com.ctre.phoenix6.signals.InvertedValue.Clockwise_Positive;
-        motor2.getConfigurator().apply(config);
+        // Apply configs from HopperConstants
+        motor1.getConfigurator().apply(HopperConstants.kMotor1Config);
+        motor2.getConfigurator().apply(HopperConstants.kMotor2Config);
 
         // Status signals (just motor1 for telemetry)
         motor1Velocity = motor1.getVelocity();

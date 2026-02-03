@@ -39,7 +39,7 @@ public class IntakeSimulation {
         // Arm physics simulation
         pivotSim = new SingleJointedArmSim(
                 DCMotor.getKrakenX60(1),
-                IntakeConstants.kIntakePivotGearRatio,
+                IntakeConstants.kPivotGearRatio,
                 SingleJointedArmSim.estimateMOI(IntakeConstants.kIntakeLength, IntakeConstants.kIntakeMass),
                 IntakeConstants.kIntakeLength,
                 0.0, // Min Angle
@@ -66,9 +66,9 @@ public class IntakeSimulation {
 
         // Update motor sim state
         pivotMotor.getSimState().setRawRotorPosition(
-                Units.radiansToRotations(pivotSim.getAngleRads()) * IntakeConstants.kIntakePivotGearRatio);
+                Units.radiansToRotations(pivotSim.getAngleRads()) * IntakeConstants.kPivotGearRatio);
         pivotMotor.getSimState().setRotorVelocity(
-                Units.radiansToRotations(pivotSim.getVelocityRadPerSec()) * IntakeConstants.kIntakePivotGearRatio);
+                Units.radiansToRotations(pivotSim.getVelocityRadPerSec()) * IntakeConstants.kPivotGearRatio);
 
         // Update roller sim state (basic)
         rollerMotor.getSimState().setSupplyVoltage(12.0);

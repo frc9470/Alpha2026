@@ -1,22 +1,44 @@
 package com.team9470.subsystems.intake;
 
+import com.ctre.phoenix6.configs.TalonFXConfiguration;
+import com.ctre.phoenix6.signals.NeutralModeValue;
+
 public class IntakeConstants {
     // NOTE: CAN IDs are in Ports.java (INTAKE_PIVOT, INTAKE_ROLLER)
 
-    public static final double kIntakePivotGearRatio = 20.0; // Estimate
-    public static final double kIntakePivotKp = 40.0;
-    public static final double kIntakePivotKv = 0.5; // V/(rad/s)
-    public static final double kIntakePivotKa = 0.1;
-    public static final double kIntakePivotKg = 0.5; // Gravity Hold
+    // Physical Constants
+    public static final double kPivotGearRatio = 20.0;
 
-    public static final double kIntakeMotionMagicCruiseVel = 4.0; // rad/s
-    public static final double kIntakeMotionMagicAccel = 8.0; // rad/s^2
-
-    public static final double kIntakeDeployAngle = Math.toRadians(-25.0); // Down/Floor
-    public static final double kIntakeRetractAngle = Math.toRadians(90.0); // Up/Stowed
-    public static final double kIntakeRollerVoltage = 8.0;
+    // Setpoints
+    public static final double kDeployAngle = Math.toRadians(-25.0); // Down/Floor
+    public static final double kRetractAngle = Math.toRadians(90.0); // Up/Stowed
+    public static final double kRollerVoltage = 8.0;
 
     // Simulation
     public static final double kIntakeLength = 0.3; // meters
     public static final double kIntakeMass = 4.0; // kg
+
+    // Motor Configs
+    public static final TalonFXConfiguration kPivotConfig = new TalonFXConfiguration();
+    public static final TalonFXConfiguration kRollerConfig = new TalonFXConfiguration();
+
+    static {
+        // Pivot Config
+        kPivotConfig.Slot0.kP = 40.0;
+        kPivotConfig.Slot0.kI = 0.0;
+        kPivotConfig.Slot0.kD = 0.0;
+        kPivotConfig.Slot0.kV = 0.5;
+        kPivotConfig.Slot0.kA = 0.1;
+        kPivotConfig.Slot0.kG = 0.5; // Gravity hold
+        kPivotConfig.MotorOutput.NeutralMode = NeutralModeValue.Brake;
+        kPivotConfig.Feedback.SensorToMechanismRatio = kPivotGearRatio;
+        kPivotConfig.MotionMagic.MotionMagicCruiseVelocity = 4.0; // rad/s
+        kPivotConfig.MotionMagic.MotionMagicAcceleration = 8.0; // rad/s^2
+        kPivotConfig.MotionMagic.MotionMagicJerk = 0;
+        kPivotConfig.CurrentLimits.withSupplyCurrentLimit(40.0).withSupplyCurrentLimitEnable(true);
+
+        // Roller Config
+        kRollerConfig.MotorOutput.NeutralMode = NeutralModeValue.Coast;
+        kRollerConfig.CurrentLimits.withSupplyCurrentLimit(40.0).withSupplyCurrentLimitEnable(true);
+    }
 }

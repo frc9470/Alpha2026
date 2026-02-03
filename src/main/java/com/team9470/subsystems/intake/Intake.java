@@ -45,30 +45,11 @@ public class Intake extends SubsystemBase {
     private boolean deployed = false;
 
     private Intake() {
-        // --- Pivot Config ---
-        TalonFXConfiguration pivotConfig = new TalonFXConfiguration();
-        pivotConfig.Slot0.kP = IntakeConstants.kIntakePivotKp;
-        pivotConfig.Slot0.kV = IntakeConstants.kIntakePivotKv;
-        pivotConfig.Slot0.kA = IntakeConstants.kIntakePivotKa;
-        pivotConfig.Slot0.kG = IntakeConstants.kIntakePivotKg;
-
-        pivotConfig.MotionMagic.MotionMagicCruiseVelocity = Units
-                .radiansToRotations(IntakeConstants.kIntakeMotionMagicCruiseVel);
-        pivotConfig.MotionMagic.MotionMagicAcceleration = Units
-                .radiansToRotations(IntakeConstants.kIntakeMotionMagicAccel);
-        pivotConfig.MotionMagic.MotionMagicJerk = 0;
-
-        pivotConfig.MotorOutput.NeutralMode = NeutralModeValue.Brake;
-        pivotConfig.MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive;
-        pivotConfig.Feedback.SensorToMechanismRatio = IntakeConstants.kIntakePivotGearRatio;
-
-        pivot.getConfigurator().apply(pivotConfig);
+        // Apply configs from IntakeConstants
+        pivot.getConfigurator().apply(IntakeConstants.kPivotConfig);
         pivot.setPosition(0);
 
-        // --- Roller Config ---
-        TalonFXConfiguration rollerConfig = new TalonFXConfiguration();
-        rollerConfig.MotorOutput.NeutralMode = NeutralModeValue.Coast;
-        roller.getConfigurator().apply(rollerConfig);
+        roller.getConfigurator().apply(IntakeConstants.kRollerConfig);
     }
 
     // --- Commands ---
@@ -87,13 +68,13 @@ public class Intake extends SubsystemBase {
     @Override
     public void periodic() {
         // Pivot control
-        double targetAngle = deployed ? IntakeConstants.kIntakeDeployAngle : IntakeConstants.kIntakeRetractAngle;
+        double targetAngle = deployed ? IntakeConstants.kDeployAngle : IntakeConstants.kRetractAngle;
         double targetRot = Units.radiansToRotations(targetAngle);
         pivot.setControl(mmRequest.withPosition(targetRot));
 
         // Roller control
         if (deployed) {
-            roller.setControl(voltRequest.withOutput(IntakeConstants.kIntakeRollerVoltage));
+            roller.setControl(voltRequest.withOutput(IntakeConstants.kRollerVoltage));
         } else {
             roller.setControl(voltRequest.withOutput(0));
         }
