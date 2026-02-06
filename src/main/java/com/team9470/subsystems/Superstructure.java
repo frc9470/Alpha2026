@@ -99,13 +99,15 @@ public class Superstructure extends SubsystemBase {
 
             // Check alignment
             boolean isAligned = Math.abs(rotError) < Math.toRadians(3.0);
+            boolean canFire = isAligned && solution.isValid() && shooter.isAtSetpoint();
 
             // Control shooter and hopper
-            shooter.setFiring(isAligned);
-            hopper.setRunning(isAligned);
+            shooter.setFiring(canFire);
+            hopper.setRunning(canFire);
 
             // Telemetry
             SmartDashboard.putBoolean("Superstructure/Aligned", isAligned);
+            SmartDashboard.putBoolean("Superstructure/CanFire", canFire);
             SmartDashboard.putNumber("Superstructure/RotError", Math.toDegrees(rotError));
             SmartDashboard.putNumber("Superstructure/RotCmd", rotCmd);
 
@@ -148,13 +150,15 @@ public class Superstructure extends SubsystemBase {
     public Command aimAndShootCommand() {
         return Commands.run(() -> {
             var result = getAimResult();
+            boolean canFire = result.isAligned() && result.solution().isValid() && shooter.isAtSetpoint();
 
             // Control shooter and hopper based on alignment
-            shooter.setFiring(result.isAligned());
-            hopper.setRunning(result.isAligned());
+            shooter.setFiring(canFire);
+            hopper.setRunning(canFire);
 
             // Telemetry
             SmartDashboard.putBoolean("Superstructure/Aligned", result.isAligned());
+            SmartDashboard.putBoolean("Superstructure/CanFire", canFire);
             SmartDashboard.putNumber("Superstructure/RotCmd", result.rotationCommand());
 
         }, this).finallyDo(() -> {

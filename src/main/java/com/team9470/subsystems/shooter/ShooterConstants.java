@@ -1,6 +1,7 @@
 package com.team9470.subsystems.shooter;
 
 import static edu.wpi.first.units.Units.*;
+import edu.wpi.first.math.util.Units;
 import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.units.measure.Distance;
 import edu.wpi.first.units.measure.Mass;
@@ -42,6 +43,36 @@ public class ShooterConstants {
         // Motor Configs
         public static final TalonFXConfiguration kFlywheelConfig = new TalonFXConfiguration();
         public static final TalonFXConfiguration kHoodConfig = new TalonFXConfiguration();
+
+        // -------------------- Unit / Gear Conversion Helpers --------------------
+        // Keep all gear-ratio math here to avoid duplicated scaling in subsystems.
+        public static double flywheelMechanismRpsToMotorRps(double mechanismRps) {
+                return mechanismRps * kFlywheelGearRatio;
+        }
+
+        public static double flywheelMotorRpsToMechanismRps(double motorRps) {
+                return motorRps / kFlywheelGearRatio;
+        }
+
+        public static double hoodRadiansToMechanismRotations(double hoodRadians) {
+                return Units.radiansToRotations(hoodRadians);
+        }
+
+        public static double hoodMechanismRotationsToRadians(double hoodMechanismRotations) {
+                return Units.rotationsToRadians(hoodMechanismRotations);
+        }
+
+        public static double hoodMechanismRotationsToMotorRotations(double hoodMechanismRotations) {
+                return hoodMechanismRotations * kHoodGearRatio;
+        }
+
+        public static double hoodMotorRotationsToMechanismRotations(double hoodMotorRotations) {
+                return hoodMotorRotations / kHoodGearRatio;
+        }
+
+        public static double hoodMechanismRpsToMotorRps(double hoodMechanismRps) {
+                return hoodMechanismRps * kHoodGearRatio;
+        }
 
         static {
                 // Flywheel Config

@@ -110,7 +110,7 @@ public class Shooter extends SubsystemBase {
         this.targetSpeedRPS = exitSpeed / (efficiency * 2.0 * Math.PI * wheelRadius);
 
         // Pitch angle -> Hood rotations
-        this.targetHoodAngleRotations = Units.radiansToRotations(solution.pitch().getRadians());
+        this.targetHoodAngleRotations = ShooterConstants.hoodRadiansToMechanismRotations(solution.pitch().getRadians());
     }
 
     /**
@@ -166,27 +166,26 @@ public class Shooter extends SubsystemBase {
         if (Robot.isSimulation()) {
             return ProjectileSimulation.getInstance().getFlywheelVelocityRPS();
         }
-        return flywheelVelocity.getValueAsDouble() / ShooterConstants.kFlywheelGearRatio;
+        return ShooterConstants.flywheelMotorRpsToMechanismRps(flywheelVelocity.getValueAsDouble());
     }
 
     public double getCurrentHoodRotations() {
         if (Robot.isSimulation()) {
-            return Units.radiansToRotations(ProjectileSimulation.getInstance().getHoodAngleRad());
+            return ShooterConstants.hoodRadiansToMechanismRotations(ProjectileSimulation.getInstance().getHoodAngleRad());
         }
-        return hoodPosition.getValueAsDouble() / ShooterConstants.kHoodGearRatio;
+        return hoodPosition.getValueAsDouble();
     }
 
     @Override
     public void periodic() {
         // Apply motor commands
-        double motorRPS = targetSpeedRPS * ShooterConstants.kFlywheelGearRatio;
+        double motorRPS = ShooterConstants.flywheelMechanismRpsToMotorRps(targetSpeedRPS);
         flywheelMaster.setControl(flywheelRequest.withVelocity(motorRPS));
         flywheelSlave.setControl(flywheelRequest.withVelocity(motorRPS));
         flywheelSlave2.setControl(flywheelRequest.withVelocity(motorRPS));
         flywheelSlave3.setControl(flywheelRequest.withVelocity(motorRPS));
 
-        double motorRotations = targetHoodAngleRotations * ShooterConstants.kHoodGearRatio;
-        hoodMotor.setControl(hoodRequest.withPosition(motorRotations));
+        hoodMotor.setControl(hoodRequest.withPosition(targetHoodAngleRotations));
 
         // Telemetry
         SmartDashboard.putNumber("Shooter/TargetRPS", targetSpeedRPS);
@@ -205,14 +204,16 @@ public class Shooter extends SubsystemBase {
 
         // Feed simulated values back to motor sim states
         double flywheelRPS = sim.getFlywheelVelocityRPS();
-        flywheelMaster.getSimState().setRotorVelocity(flywheelRPS * ShooterConstants.kFlywheelGearRatio);
+        flywheelMaster.getSimState().setRotorVelocity(ShooterConstants.flywheelMechanismRpsToMotorRps(flywheelRPS));
 
         double hoodAngleRad = sim.getHoodAngleRad();
         double hoodVelRadPerSec = sim.getHoodVelocityRadPerSec();
         hoodMotor.getSimState().setRawRotorPosition(
-                Units.radiansToRotations(hoodAngleRad) * ShooterConstants.kHoodGearRatio);
+                ShooterConstants.hoodMechanismRotationsToMotorRotations(
+                        ShooterConstants.hoodRadiansToMechanismRotations(hoodAngleRad)));
         hoodMotor.getSimState().setRotorVelocity(
-                Units.radiansToRotations(hoodVelRadPerSec) * ShooterConstants.kHoodGearRatio);
+                ShooterConstants.hoodMechanismRpsToMotorRps(
+                        ShooterConstants.hoodRadiansToMechanismRotations(hoodVelRadPerSec)));
 
         // Telemetry
         SmartDashboard.putNumber("Shooter/MeasuredBPS", sim.getMeasuredBPS());

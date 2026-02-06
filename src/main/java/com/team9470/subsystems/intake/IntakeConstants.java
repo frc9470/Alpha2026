@@ -2,6 +2,7 @@ package com.team9470.subsystems.intake;
 
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.signals.NeutralModeValue;
+import edu.wpi.first.math.util.Units;
 
 public class IntakeConstants {
     // NOTE: CAN IDs are in Ports.java (INTAKE_PIVOT, INTAKE_ROLLER)
@@ -28,6 +29,23 @@ public class IntakeConstants {
     // Motor Configs
     public static final TalonFXConfiguration kPivotConfig = new TalonFXConfiguration();
     public static final TalonFXConfiguration kRollerConfig = new TalonFXConfiguration();
+
+    // -------------------- Unit / Gear Conversion Helpers --------------------
+    public static double pivotRadiansToMechanismRotations(double pivotRadians) {
+        return Units.radiansToRotations(pivotRadians);
+    }
+
+    public static double pivotMechanismRotationsToRadians(double pivotMechanismRotations) {
+        return Units.rotationsToRadians(pivotMechanismRotations);
+    }
+
+    public static double pivotMechanismRotationsToMotorRotations(double pivotMechanismRotations) {
+        return pivotMechanismRotations * kPivotGearRatio;
+    }
+
+    public static double pivotMotorRotationsToMechanismRotations(double pivotMotorRotations) {
+        return pivotMotorRotations / kPivotGearRatio;
+    }
 
     static {
         // Pivot Config

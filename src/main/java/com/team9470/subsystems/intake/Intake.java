@@ -11,7 +11,6 @@ import com.team9470.Ports;
 import com.team9470.Robot;
 import com.team9470.simulation.IntakeSimulation;
 
-import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
@@ -69,7 +68,7 @@ public class Intake extends SubsystemBase {
     public void periodic() {
         // Pivot control
         double targetAngle = deployed ? IntakeConstants.kDeployAngle : IntakeConstants.kRetractAngle;
-        double targetRot = Units.radiansToRotations(targetAngle);
+        double targetRot = IntakeConstants.pivotRadiansToMechanismRotations(targetAngle);
         pivot.setControl(mmRequest.withPosition(targetRot));
 
         // Roller control
@@ -80,7 +79,8 @@ public class Intake extends SubsystemBase {
         }
 
         // Telemetry
-        SmartDashboard.putNumber("Intake/AngleDeg", Units.rotationsToDegrees(pivot.getPosition().getValueAsDouble()));
+        SmartDashboard.putNumber("Intake/AngleDeg",
+                Math.toDegrees(IntakeConstants.pivotMechanismRotationsToRadians(pivot.getPosition().getValueAsDouble())));
         SmartDashboard.putBoolean("Intake/Deployed", deployed);
 
         // Update visualization (works in both real and sim)
@@ -104,7 +104,7 @@ public class Intake extends SubsystemBase {
         if (Robot.isSimulation()) {
             return IntakeSimulation.getInstance().getAngleRad();
         }
-        return Units.rotationsToRadians(pivot.getPosition().getValueAsDouble());
+        return IntakeConstants.pivotMechanismRotationsToRadians(pivot.getPosition().getValueAsDouble());
     }
 
     // ==================== HOMING ====================

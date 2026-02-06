@@ -127,7 +127,7 @@ public class ProjectileSimulation {
         }
 
         // Auto-fire when at setpoint
-        if (isFiring && isFlywheelAtSetpoint(targetSpeedRPS)) {
+        if (isFiring && isFlywheelAtSetpoint(targetSpeedRPS) && isHoodAtSetpoint(targetHoodAngleRot)) {
             spawnProjectile(targetSpeedRPS, targetHoodAngleRot);
             shotTimestamps.add(now);
             lastLaunchTime = now;
@@ -149,6 +149,11 @@ public class ProjectileSimulation {
     private boolean isFlywheelAtSetpoint(double targetRPS) {
         double currentRPS = flywheelSim.getAngularVelocityRPM() / 60.0;
         return Math.abs(currentRPS - targetRPS) < 0.5;
+    }
+
+    private boolean isHoodAtSetpoint(double targetHoodRot) {
+        double currentHoodRot = ShooterConstants.hoodRadiansToMechanismRotations(hoodSim.getAngleRads());
+        return Math.abs(currentHoodRot - targetHoodRot) < 0.01;
     }
 
     private void spawnProjectile(double targetSpeedRPS, double targetHoodAngleRot) {

@@ -15,6 +15,7 @@ import com.ctre.phoenix6.swerve.SwerveRequest;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import com.team9470.Constants.OperatorConstants;
+import com.team9470.subsystems.vision.Vision;
 import static edu.wpi.first.units.Units.*;
 
 public class RobotContainer {
@@ -34,6 +35,7 @@ public class RobotContainer {
   // Subsystems
   private final Swerve m_swerve = Swerve.getInstance();
   private final Superstructure m_superstructure = Superstructure.getInstance();
+  private final Vision m_vision = Vision.getInstance();
 
   // Controllers
   private final CommandXboxController m_driverController = new CommandXboxController(
