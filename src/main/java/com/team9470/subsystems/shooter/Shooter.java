@@ -30,10 +30,10 @@ import java.util.function.Supplier;
 public class Shooter extends SubsystemBase {
 
     // Hardware
-    private final TalonFX flywheelMaster = new TalonFX(Ports.FLYWHEEL_MASTER.getDeviceNumber());
-    private final TalonFX flywheelSlave = new TalonFX(Ports.FLYWHEEL_SLAVE.getDeviceNumber());
-    private final TalonFX flywheelSlave2 = new TalonFX(Ports.FLYWHEEL_SLAVE_2.getDeviceNumber());
-    private final TalonFX flywheelSlave3 = new TalonFX(Ports.FLYWHEEL_SLAVE_3.getDeviceNumber());
+    private final TalonFX flywheel1 = new TalonFX(Ports.FLYWHEEL_1.getDeviceNumber());
+    private final TalonFX flywheel2 = new TalonFX(Ports.FLYWHEEL_2.getDeviceNumber());
+    private final TalonFX flywheel3 = new TalonFX(Ports.FLYWHEEL_3.getDeviceNumber());
+    private final TalonFX flywheel4 = new TalonFX(Ports.FLYWHEEL_4.getDeviceNumber());
     private final TalonFX hoodMotor = new TalonFX(Ports.HOOD_MOTOR.getDeviceNumber());
 
     // Controls
@@ -48,6 +48,7 @@ public class Shooter extends SubsystemBase {
     private double targetSpeedRPS = 0.0;
     private double targetHoodAngleRotations = 0.0;
     private boolean isFiring = false;
+    private boolean needsHoming = true;
 
     // Simulation context
     private Supplier<Pose2d> poseSupplier = Pose2d::new;
@@ -55,22 +56,22 @@ public class Shooter extends SubsystemBase {
 
     public Shooter() {
         // Configure motors
-        flywheelMaster.getConfigurator().apply(ShooterConstants.kFlywheelConfig);
-        flywheelSlave.getConfigurator().apply(ShooterConstants.kFlywheelConfig);
-        flywheelSlave2.getConfigurator().apply(ShooterConstants.kFlywheelConfig);
-        flywheelSlave3.getConfigurator().apply(ShooterConstants.kFlywheelConfig);
+        flywheel1.getConfigurator().apply(ShooterConstants.kFlywheelConfig);
+        flywheel2.getConfigurator().apply(ShooterConstants.kFlywheelConfig);
+        flywheel3.getConfigurator().apply(ShooterConstants.kFlywheelConfig);
+        flywheel4.getConfigurator().apply(ShooterConstants.kFlywheelConfig);
         hoodMotor.getConfigurator().apply(ShooterConstants.kHoodConfig);
 
         // Get status signals
-        flywheelVelocity = flywheelMaster.getVelocity();
+        flywheelVelocity = flywheel1.getVelocity();
         hoodPosition = hoodMotor.getPosition();
 
         // Optimize CAN bus
         BaseStatusSignal.setUpdateFrequencyForAll(50, flywheelVelocity, hoodPosition);
-        flywheelMaster.optimizeBusUtilization();
-        flywheelSlave.optimizeBusUtilization();
-        flywheelSlave2.optimizeBusUtilization();
-        flywheelSlave3.optimizeBusUtilization();
+        flywheel1.optimizeBusUtilization();
+        flywheel2.optimizeBusUtilization();
+        flywheel3.optimizeBusUtilization();
+        flywheel4.optimizeBusUtilization();
         hoodMotor.optimizeBusUtilization();
 
         // Initialize simulation if needed
@@ -83,7 +84,7 @@ public class Shooter extends SubsystemBase {
         ProjectileSimulation.getInstance().setContext(
                 poseSupplier,
                 speedsSupplier,
-                () -> flywheelMaster.getSimState().getMotorVoltage(),
+                () -> flywheel1.getSimState().getMotorVoltage(),
                 () -> hoodMotor.getSimState().getMotorVoltage());
     }
 
@@ -171,23 +172,51 @@ public class Shooter extends SubsystemBase {
 
     public double getCurrentHoodRotations() {
         if (Robot.isSimulation()) {
-            return ShooterConstants.hoodRadiansToMechanismRotations(ProjectileSimulation.getInstance().getHoodAngleRad());
+            return ShooterConstants
+                    .hoodRadiansToMechanismRotations(ProjectileSimulation.getInstance().getHoodAngleRad());
         }
         return hoodPosition.getValueAsDouble();
     }
 
     @Override
     public void periodic() {
+        if (needsHoming) {
+            // Drive hood toward min-angle hardstop
+            hoodMotor.setControl(new com.ctre.phoenix6.controls.VoltageOut(ShooterConstants.kHoodHomingVoltage));
+
+            // Keep flywheels stopped during homing
+            flywheel1.setControl(flywheelRequest.withVelocity(0));
+            flywheel2.setControl(flywheelRequest.withVelocity(0));
+            flywheel3.setControl(flywheelRequest.withVelocity(0));
+            flywheel4.setControl(flywheelRequest.withVelocity(0));
+
+            // Check for stall (hit hardstop): high current AND low velocity
+            double current = hoodMotor.getSupplyCurrent().getValueAsDouble();
+            double velocity = Math.abs(hoodMotor.getVelocity().getValueAsDouble());
+            if (current > ShooterConstants.kHoodStallCurrentThreshold && velocity < 0.5) {
+                hoodMotor.setControl(new com.ctre.phoenix6.controls.VoltageOut(0));
+                hoodMotor.setPosition(ShooterConstants.hoodRadiansToMechanismRotations(
+                        ShooterConstants.kHoodHomePosition.in(edu.wpi.first.units.Units.Radians)));
+                needsHoming = false;
+            }
+
+            SmartDashboard.putBoolean("Shooter/Homing", true);
+            return;
+        }
+
+        // --- Normal operation ---
+
         // Apply motor commands
         double motorRPS = ShooterConstants.flywheelMechanismRpsToMotorRps(targetSpeedRPS);
-        flywheelMaster.setControl(flywheelRequest.withVelocity(motorRPS));
-        flywheelSlave.setControl(flywheelRequest.withVelocity(motorRPS));
-        flywheelSlave2.setControl(flywheelRequest.withVelocity(motorRPS));
-        flywheelSlave3.setControl(flywheelRequest.withVelocity(motorRPS));
+        flywheel1.setControl(flywheelRequest.withVelocity(motorRPS));
+        flywheel2.setControl(flywheelRequest.withVelocity(motorRPS));
+        flywheel3.setControl(flywheelRequest.withVelocity(motorRPS));
+        flywheel4.setControl(flywheelRequest.withVelocity(motorRPS));
 
         hoodMotor.setControl(hoodRequest.withPosition(targetHoodAngleRotations));
 
         // Telemetry
+        SmartDashboard.putBoolean("Shooter/Homing", false);
         SmartDashboard.putNumber("Shooter/TargetRPS", targetSpeedRPS);
         SmartDashboard.putNumber("Shooter/CurrentRPS", getCurrentFlywheelRPS());
         SmartDashboard.putNumber("Shooter/TargetHoodRot", targetHoodAngleRotations);
@@ -204,7 +233,7 @@ public class Shooter extends SubsystemBase {
 
         // Feed simulated values back to motor sim states
         double flywheelRPS = sim.getFlywheelVelocityRPS();
-        flywheelMaster.getSimState().setRotorVelocity(ShooterConstants.flywheelMechanismRpsToMotorRps(flywheelRPS));
+        flywheel1.getSimState().setRotorVelocity(ShooterConstants.flywheelMechanismRpsToMotorRps(flywheelRPS));
 
         double hoodAngleRad = sim.getHoodAngleRad();
         double hoodVelRadPerSec = sim.getHoodVelocityRadPerSec();
@@ -228,45 +257,10 @@ public class Shooter extends SubsystemBase {
         }
     }
 
-    // ==================== HOMING ====================
-
-    private boolean isHomed = false;
-    private final com.ctre.phoenix6.controls.VoltageOut homingVoltage = new com.ctre.phoenix6.controls.VoltageOut(0);
-
     /**
-     * Returns whether the hood has been homed.
+     * Returns whether homing is complete.
      */
     public boolean isHomed() {
-        return isHomed;
-    }
-
-    /**
-     * Command to home the hood to hardstop.
-     * Drives hood at homing voltage until stall is detected, then zeros encoder.
-     */
-    public edu.wpi.first.wpilibj2.command.Command homeHoodCommand() {
-        return new edu.wpi.first.wpilibj2.command.FunctionalCommand(
-                // Init
-                () -> {
-                    isHomed = false;
-                },
-                // Execute
-                () -> {
-                    hoodMotor.setControl(homingVoltage.withOutput(ShooterConstants.kHoodHomingVoltage));
-                },
-                // End
-                (interrupted) -> {
-                    hoodMotor.setControl(homingVoltage.withOutput(0));
-                    if (!interrupted) {
-                        hoodMotor.setPosition(ShooterConstants.kHoodHomePosition);
-                        isHomed = true;
-                    }
-                },
-                // IsFinished
-                () -> {
-                    double current = hoodMotor.getSupplyCurrent().getValueAsDouble();
-                    return current > ShooterConstants.kHoodStallCurrentThreshold;
-                },
-                this).withTimeout(3.0).withName("Hood Homing");
+        return !needsHoming;
     }
 }

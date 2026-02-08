@@ -1,18 +1,21 @@
 package com.team9470.subsystems.intake;
 
+import static edu.wpi.first.units.Units.*;
+
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
+import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
-import edu.wpi.first.math.util.Units;
+import edu.wpi.first.units.measure.Angle;
 
 public class IntakeConstants {
     // NOTE: CAN IDs are in Ports.java (INTAKE_PIVOT, INTAKE_ROLLER)
 
     // Physical Constants
-    public static final double kPivotGearRatio = 20.0;
+    public static final double kPivotGearRatio = 22.5;
 
-    // Setpoints (radians, mechanism output)
-    public static final double kDeployAngle = Math.toRadians(-25.0); // Down/Floor
-    public static final double kRetractAngle = Math.toRadians(90.0); // Up/Stowed
+    // Setpoints
+    public static final Angle kDeployAngle = Degrees.of(-35.0); // Down/Floor
+    public static final Angle kRetractAngle = Degrees.of(90.0); // Up/Stowed
     public static final double kRollerVoltage = 8.0;
 
     // Simulation
@@ -24,19 +27,19 @@ public class IntakeConstants {
     public static final double kHomingVoltage = 3.0; // Positive = toward retract/up
     public static final double kStallCurrentThreshold = 20.0; // Amps
     public static final double kStallTimeThreshold = 0.1; // Seconds at stall
-    public static final double kHomePosition = 0.25; // Rotations at hardstop (90 deg = 0.25 rot)
+    public static final Angle kHomePosition = Degrees.of(115.0); // Angle at hardstop
 
     // Motor Configs
     public static final TalonFXConfiguration kPivotConfig = new TalonFXConfiguration();
     public static final TalonFXConfiguration kRollerConfig = new TalonFXConfiguration();
 
     // -------------------- Unit / Gear Conversion Helpers --------------------
-    public static double pivotRadiansToMechanismRotations(double pivotRadians) {
-        return Units.radiansToRotations(pivotRadians);
+    public static double pivotAngleToMechanismRotations(Angle angle) {
+        return angle.in(Rotations);
     }
 
-    public static double pivotMechanismRotationsToRadians(double pivotMechanismRotations) {
-        return Units.rotationsToRadians(pivotMechanismRotations);
+    public static Angle pivotMechanismRotationsToAngle(double mechanismRotations) {
+        return Rotations.of(mechanismRotations);
     }
 
     public static double pivotMechanismRotationsToMotorRotations(double pivotMechanismRotations) {
@@ -64,6 +67,7 @@ public class IntakeConstants {
 
         // Roller Config
         kRollerConfig.MotorOutput.NeutralMode = NeutralModeValue.Coast;
+        kRollerConfig.MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive;
         kRollerConfig.CurrentLimits.withSupplyCurrentLimit(40.0).withSupplyCurrentLimitEnable(true);
     }
 }

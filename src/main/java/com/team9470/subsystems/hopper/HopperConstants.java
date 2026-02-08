@@ -5,23 +5,29 @@ import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 
 public class HopperConstants {
-    // NOTE: CAN IDs are in Ports.java (HOPPER_MOTOR_1, HOPPER_MOTOR_2)
+    // NOTE: CAN IDs are in Ports.java (HOPPER_LEFT, HOPPER_RIGHT, HOPPER_TOP)
 
     // Control
     public static final double kFeedVoltage = 8.0; // Voltage when feeding to shooter
 
     // Motor Configs
-    public static final TalonFXConfiguration kMotor1Config = new TalonFXConfiguration();
-    public static final TalonFXConfiguration kMotor2Config = new TalonFXConfiguration();
+    public static final TalonFXConfiguration kLeftConfig = new TalonFXConfiguration();
+    public static final TalonFXConfiguration kRightConfig = new TalonFXConfiguration();
+    public static final TalonFXConfiguration kTopConfig = new TalonFXConfiguration();
 
     static {
-        // Motor 1 Config
-        kMotor1Config.MotorOutput.NeutralMode = NeutralModeValue.Brake;
-        kMotor1Config.CurrentLimits.withSupplyCurrentLimit(40.0).withSupplyCurrentLimitEnable(true);
+        // Left Motor Config
+        kLeftConfig.MotorOutput.NeutralMode = NeutralModeValue.Brake;
+        kLeftConfig.CurrentLimits.withSupplyCurrentLimit(40.0).withSupplyCurrentLimitEnable(true);
 
-        // Motor 2 Config (inverted for opposing roller direction)
-        kMotor2Config.MotorOutput.NeutralMode = NeutralModeValue.Brake;
-        kMotor2Config.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
-        kMotor2Config.CurrentLimits.withSupplyCurrentLimit(40.0).withSupplyCurrentLimitEnable(true);
+        // Right Motor Config (inverted for opposing roller direction)
+        kRightConfig.MotorOutput.NeutralMode = NeutralModeValue.Brake;
+        kRightConfig.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
+        kRightConfig.CurrentLimits.withSupplyCurrentLimit(40.0).withSupplyCurrentLimitEnable(true);
+
+        // Top Motor Config (opposite orientation to left motor)
+        kTopConfig.MotorOutput.NeutralMode = NeutralModeValue.Brake;
+        kTopConfig.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
+        kTopConfig.CurrentLimits.withSupplyCurrentLimit(40.0).withSupplyCurrentLimitEnable(true);
     }
 }

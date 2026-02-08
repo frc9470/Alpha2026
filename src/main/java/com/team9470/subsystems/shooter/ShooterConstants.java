@@ -10,8 +10,8 @@ import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 
 public class ShooterConstants {
-        // NOTE: CAN IDs are in Ports.java (FLYWHEEL_MASTER, FLYWHEEL_SLAVE,
-        // FLYWHEEL_SLAVE_2, FLYWHEEL_SLAVE_3, HOOD_MOTOR)
+        // NOTE: CAN IDs are in Ports.java (FLYWHEEL_1, FLYWHEEL_2,
+        // FLYWHEEL_3, FLYWHEEL_4, HOOD_MOTOR)
 
         // Physical Constants
         public static final double kFlywheelGearRatio = 1.5;
@@ -21,7 +21,7 @@ public class ShooterConstants {
         // 9 lb*in^2 = 9 * 0.0002926397 ~= 0.002634 kg*m^2
         public static final MomentOfInertia kFlywheelMOI = KilogramSquareMeters.of(0.002634);
 
-        public static final double kHoodGearRatio = 50.0;
+        public static final double kHoodGearRatio = 19.0; // 2:1 stage × 9.5:1 (10t pinion → 95t gear)
         public static final MomentOfInertia kHoodMOI = KilogramSquareMeters.of(0.05);
         public static final Distance kHoodLength = Meters.of(0.2);
         public static final Mass kHoodMass = Kilograms.of(2.0);
@@ -38,7 +38,7 @@ public class ShooterConstants {
         public static final double kHoodHomingVoltage = -2.0; // Negative = toward min
         public static final double kHoodStallCurrentThreshold = 15.0; // Amps
         public static final double kHoodStallTimeThreshold = 0.1; // Seconds at stall
-        public static final double kHoodHomePosition = 0.0; // Rotations at hardstop
+        public static final Angle kHoodHomePosition = Degrees.of(0.0); // Angle at hardstop
 
         // Motor Configs
         public static final TalonFXConfiguration kFlywheelConfig = new TalonFXConfiguration();

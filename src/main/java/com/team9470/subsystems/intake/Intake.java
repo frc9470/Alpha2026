@@ -1,19 +1,23 @@
 package com.team9470.subsystems.intake;
 
-import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.MotionMagicVoltage;
 import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFX;
-import com.ctre.phoenix6.signals.InvertedValue;
-import com.ctre.phoenix6.signals.NeutralModeValue;
 
 import com.team9470.Ports;
 import com.team9470.Robot;
 import com.team9470.simulation.IntakeSimulation;
 
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.networktables.BooleanPublisher;
+import edu.wpi.first.networktables.DoublePublisher;
+import edu.wpi.first.networktables.NetworkTable;
+import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.networktables.StringPublisher;
+import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+
+import static edu.wpi.first.units.Units.*;
 
 /**
  * Intake subsystem - controls pivot arm and roller.
@@ -42,6 +46,40 @@ public class Intake extends SubsystemBase {
 
     // State
     private boolean deployed = false;
+    private boolean needsHoming = true;
+
+    // ==================== TELEMETRY ====================
+    private final NetworkTable nt = NetworkTableInstance.getDefault().getTable("Intake");
+
+    // State publishers
+    private final BooleanPublisher ntHoming = nt.getBooleanTopic("Homing").publish();
+    private final BooleanPublisher ntDeployed = nt.getBooleanTopic("Deployed").publish();
+    private final StringPublisher ntState = nt.getStringTopic("State").publish();
+
+    // Pivot position (degrees)
+    private final DoublePublisher ntGoalDeg = makeDegPublisher("Pivot/GoalDeg");
+    private final DoublePublisher ntSetpointDeg = makeDegPublisher("Pivot/SetpointDeg");
+    private final DoublePublisher ntPositionDeg = makeDegPublisher("Pivot/PositionDeg");
+    private final DoublePublisher ntErrorDeg = makeDegPublisher("Pivot/ErrorDeg");
+
+    // Pivot motor signals
+    private final DoublePublisher ntPivotVelocity = makePublisher("Pivot/VelocityDegPerSec", "deg/s");
+    private final DoublePublisher ntPivotCurrent = makePublisher("Pivot/SupplyCurrentAmps", "A");
+    private final DoublePublisher ntPivotVoltage = makePublisher("Pivot/AppliedVolts", "V");
+
+    // Roller signals
+    private final DoublePublisher ntRollerVoltage = makePublisher("Roller/AppliedVolts", "V");
+    private final DoublePublisher ntRollerCurrent = makePublisher("Roller/SupplyCurrentAmps", "A");
+
+    private DoublePublisher makeDegPublisher(String name) {
+        return makePublisher(name, "deg");
+    }
+
+    private DoublePublisher makePublisher(String name, String unit) {
+        var topic = nt.getDoubleTopic(name);
+        topic.setProperty("unit", "\"" + unit + "\"");
+        return topic.publish();
+    }
 
     private Intake() {
         // Apply configs from IntakeConstants
@@ -57,35 +95,91 @@ public class Intake extends SubsystemBase {
         this.deployed = deployed;
     }
 
-    public Command getDeployCommand() {
+    /** Toggle deploy/retract arm position. */
+    public Command getToggleCommand() {
+        return this.runOnce(() -> setDeployed(!deployed))
+                .withName("Intake Toggle");
+    }
+
+    /** Deploy + run rollers while held, retract on release. */
+    public Command getIntakeCommand() {
         return this.startEnd(
                 () -> setDeployed(true),
                 () -> setDeployed(false))
-                .withName("Intake Deploy");
+                .withName("Intake Run");
+    }
+
+    /** Reverse rollers while held (for clearing jams). */
+    public Command getOuttakeCommand() {
+        return this.startEnd(
+                () -> roller.setControl(voltRequest.withOutput(-IntakeConstants.kRollerVoltage)),
+                () -> roller.setControl(voltRequest.withOutput(0)))
+                .withName("Intake Outtake");
     }
 
     @Override
     public void periodic() {
+        if (needsHoming) {
+            // Drive toward retract hardstop
+            pivot.setControl(voltRequest.withOutput(IntakeConstants.kHomingVoltage));
+            roller.setControl(voltRequest.withOutput(0));
+
+            // Check for stall (hit hardstop): high current AND low velocity
+            double current = pivot.getSupplyCurrent().getValueAsDouble();
+            double velocity = Math.abs(pivot.getVelocity().getValueAsDouble());
+            if (current > IntakeConstants.kStallCurrentThreshold && velocity < 0.5) {
+                pivot.setControl(voltRequest.withOutput(0));
+                pivot.setPosition(IntakeConstants.pivotAngleToMechanismRotations(IntakeConstants.kHomePosition));
+                needsHoming = false;
+            }
+
+            // Homing telemetry
+            ntHoming.set(true);
+            ntDeployed.set(deployed);
+            ntState.set("HOMING");
+            ntPivotCurrent.set(current);
+            ntPivotVelocity.set(velocity * 360.0); // rot/s -> deg/s
+            ntPivotVoltage.set(IntakeConstants.kHomingVoltage);
+            return;
+        }
+
+        // --- Normal operation ---
+
         // Pivot control
-        double targetAngle = deployed ? IntakeConstants.kDeployAngle : IntakeConstants.kRetractAngle;
-        double targetRot = IntakeConstants.pivotRadiansToMechanismRotations(targetAngle);
+        Angle targetAngle = deployed ? IntakeConstants.kDeployAngle : IntakeConstants.kRetractAngle;
+        double targetRot = IntakeConstants.pivotAngleToMechanismRotations(targetAngle);
         pivot.setControl(mmRequest.withPosition(targetRot));
 
         // Roller control
-        if (deployed) {
-            roller.setControl(voltRequest.withOutput(IntakeConstants.kRollerVoltage));
-        } else {
-            roller.setControl(voltRequest.withOutput(0));
-        }
+        double rollerVolts = deployed ? IntakeConstants.kRollerVoltage : 0.0;
+        roller.setControl(voltRequest.withOutput(rollerVolts));
 
-        // Telemetry
-        SmartDashboard.putNumber("Intake/AngleDeg",
-                Math.toDegrees(IntakeConstants.pivotMechanismRotationsToRadians(pivot.getPosition().getValueAsDouble())));
-        SmartDashboard.putBoolean("Intake/Deployed", deployed);
+        // --- Telemetry ---
+        double currentPositionRot = pivot.getPosition().getValueAsDouble();
+        double currentPositionDeg = IntakeConstants.pivotMechanismRotationsToAngle(currentPositionRot)
+                .in(Degrees);
+        double goalDeg = targetAngle.in(Degrees);
+        double setpointDeg = IntakeConstants.pivotMechanismRotationsToAngle(targetRot).in(Degrees);
+
+        ntHoming.set(false);
+        ntDeployed.set(deployed);
+        ntState.set(deployed ? "DEPLOYED" : "RETRACTED");
+
+        ntGoalDeg.set(goalDeg);
+        ntSetpointDeg.set(setpointDeg);
+        ntPositionDeg.set(currentPositionDeg);
+        ntErrorDeg.set(setpointDeg - currentPositionDeg);
+
+        ntPivotVelocity.set(pivot.getVelocity().getValueAsDouble() * 360.0);
+        ntPivotCurrent.set(pivot.getSupplyCurrent().getValueAsDouble());
+        ntPivotVoltage.set(pivot.getMotorVoltage().getValueAsDouble());
+
+        ntRollerVoltage.set(rollerVolts);
+        ntRollerCurrent.set(roller.getSupplyCurrent().getValueAsDouble());
 
         // Update visualization (works in both real and sim)
         if (Robot.isSimulation()) {
-            IntakeSimulation.getInstance().updateVisualization(pivot.getPosition().getValueAsDouble());
+            IntakeSimulation.getInstance().updateVisualization(currentPositionRot);
         }
     }
 
@@ -104,48 +198,14 @@ public class Intake extends SubsystemBase {
         if (Robot.isSimulation()) {
             return IntakeSimulation.getInstance().getAngleRad();
         }
-        return IntakeConstants.pivotMechanismRotationsToRadians(pivot.getPosition().getValueAsDouble());
+        return IntakeConstants.pivotMechanismRotationsToAngle(pivot.getPosition().getValueAsDouble())
+                .in(Radians);
     }
 
-    // ==================== HOMING ====================
-
-    private boolean isHomed = false;
-    private final VoltageOut homingVoltage = new VoltageOut(0);
-
     /**
-     * Returns whether the pivot has been homed.
+     * Returns whether homing is complete.
      */
     public boolean isHomed() {
-        return isHomed;
-    }
-
-    /**
-     * Command to home the pivot to hardstop (retract position).
-     * Drives pivot at homing voltage until stall is detected, then zeros encoder.
-     */
-    public Command homePivotCommand() {
-        return new edu.wpi.first.wpilibj2.command.FunctionalCommand(
-                // Init
-                () -> {
-                    isHomed = false;
-                },
-                // Execute
-                () -> {
-                    pivot.setControl(homingVoltage.withOutput(IntakeConstants.kHomingVoltage));
-                },
-                // End
-                (interrupted) -> {
-                    pivot.setControl(homingVoltage.withOutput(0));
-                    if (!interrupted) {
-                        pivot.setPosition(IntakeConstants.kHomePosition);
-                        isHomed = true;
-                    }
-                },
-                // IsFinished
-                () -> {
-                    double current = pivot.getSupplyCurrent().getValueAsDouble();
-                    return current > IntakeConstants.kStallCurrentThreshold;
-                },
-                this).withTimeout(3.0).withName("Intake Homing");
+        return !needsHoming;
     }
 }

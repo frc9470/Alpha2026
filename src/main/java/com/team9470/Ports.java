@@ -7,17 +7,18 @@ public class Ports {
     public static final String CANIVORE = "canivore";
 
     // ==================== SHOOTER ====================
-    public static final CanDeviceId FLYWHEEL_MASTER = new CanDeviceId(50, CANIVORE);
-    public static final CanDeviceId FLYWHEEL_SLAVE = new CanDeviceId(51, CANIVORE);
-    public static final CanDeviceId FLYWHEEL_SLAVE_2 = new CanDeviceId(53, CANIVORE);
-    public static final CanDeviceId FLYWHEEL_SLAVE_3 = new CanDeviceId(54, CANIVORE);
-    public static final CanDeviceId HOOD_MOTOR = new CanDeviceId(52, CANIVORE);
+    public static final CanDeviceId FLYWHEEL_1 = new CanDeviceId(1, CANIVORE);
+    public static final CanDeviceId FLYWHEEL_2 = new CanDeviceId(2, CANIVORE);
+    public static final CanDeviceId FLYWHEEL_3 = new CanDeviceId(3, CANIVORE);
+    public static final CanDeviceId FLYWHEEL_4 = new CanDeviceId(4, CANIVORE);
+    public static final CanDeviceId HOOD_MOTOR = new CanDeviceId(5, CANIVORE);
 
     // ==================== HOPPER ====================
-    public static final CanDeviceId HOPPER_MOTOR_1 = new CanDeviceId(55, CANIVORE);
-    public static final CanDeviceId HOPPER_MOTOR_2 = new CanDeviceId(56, CANIVORE);
+    public static final CanDeviceId HOPPER_LEFT = new CanDeviceId(6, CANIVORE);
+    public static final CanDeviceId HOPPER_RIGHT = new CanDeviceId(7, CANIVORE);
+    public static final CanDeviceId HOPPER_TOP = new CanDeviceId(8, CANIVORE);
 
-    // ==================== INTAKE ====================
-    public static final CanDeviceId INTAKE_PIVOT = new CanDeviceId(60, CANIVORE);
-    public static final CanDeviceId INTAKE_ROLLER = new CanDeviceId(61, CANIVORE);
+    // ==================== INTAKE (RIO bus) ====================
+    public static final CanDeviceId INTAKE_PIVOT = new CanDeviceId(14, "rio");
+    public static final CanDeviceId INTAKE_ROLLER = new CanDeviceId(15, "rio");
 }

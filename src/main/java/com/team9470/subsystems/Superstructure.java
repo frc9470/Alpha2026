@@ -76,11 +76,27 @@ public class Superstructure extends SubsystemBase {
     // ==================== HIGH-LEVEL COMMANDS ====================
 
     /**
-     * Intake command - deploys intake to collect game pieces.
+     * Intake command - deploys intake and runs rollers while held.
      */
     public Command intakeCommand() {
-        return intake.getDeployCommand()
+        return intake.getIntakeCommand()
                 .withName("Superstructure Intake");
+    }
+
+    /**
+     * Toggle intake arm deployed/retracted.
+     */
+    public Command toggleIntakeCommand() {
+        return intake.getToggleCommand()
+                .withName("Superstructure Toggle Intake");
+    }
+
+    /**
+     * Outtake command - reverses rollers while held.
+     */
+    public Command outtakeCommand() {
+        return intake.getOuttakeCommand()
+                .withName("Superstructure Outtake");
     }
 
     /**

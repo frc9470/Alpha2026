@@ -168,21 +168,6 @@ public class TunerConstants {
                                         kFrontRightEncoderOffset,
                                         kFrontRightXPos, kFrontRightYPos, kInvertRightSide,
                                         kFrontRightSteerMotorInverted, kFrontRightEncoderInverted);
-        // Back Left
-        private static final int kBackLeftDriveMotorId = 10;
-        private static final int kBackLeftSteerMotorId = 11;
-        private static final int kBackLeftEncoderId = 12;
-        private static final Angle kBackLeftEncoderOffset = Rotations.of(0.3916015625);
-        private static final boolean kBackLeftSteerMotorInverted = false;
-        private static final boolean kBackLeftEncoderInverted = false;
-        private static final Distance kBackLeftXPos = Inches.of(-13.5);
-        private static final Distance kBackLeftYPos = Inches.of(11.5);
-        public static final SwerveModuleConstants<TalonFXConfiguration, TalonFXConfiguration, CANcoderConfiguration> BackLeft = ConstantCreator
-                        .createModuleConstants(
-                                        kBackLeftSteerMotorId, kBackLeftDriveMotorId, kBackLeftEncoderId,
-                                        kBackLeftEncoderOffset,
-                                        kBackLeftXPos, kBackLeftYPos, kInvertLeftSide, kBackLeftSteerMotorInverted,
-                                        kBackLeftEncoderInverted);
         // Back Right
         private static final int kBackRightDriveMotorId = 7;
         private static final int kBackRightSteerMotorId = 8;
@@ -198,6 +183,21 @@ public class TunerConstants {
                                         kBackRightEncoderOffset,
                                         kBackRightXPos, kBackRightYPos, kInvertRightSide, kBackRightSteerMotorInverted,
                                         kBackRightEncoderInverted);
+        // Back Left
+        private static final int kBackLeftDriveMotorId = 10;
+        private static final int kBackLeftSteerMotorId = 11;
+        private static final int kBackLeftEncoderId = 12;
+        private static final Angle kBackLeftEncoderOffset = Rotations.of(0.3916015625);
+        private static final boolean kBackLeftSteerMotorInverted = false;
+        private static final boolean kBackLeftEncoderInverted = false;
+        private static final Distance kBackLeftXPos = Inches.of(-13.5);
+        private static final Distance kBackLeftYPos = Inches.of(11.5);
+        public static final SwerveModuleConstants<TalonFXConfiguration, TalonFXConfiguration, CANcoderConfiguration> BackLeft = ConstantCreator
+                        .createModuleConstants(
+                                        kBackLeftSteerMotorId, kBackLeftDriveMotorId, kBackLeftEncoderId,
+                                        kBackLeftEncoderOffset,
+                                        kBackLeftXPos, kBackLeftYPos, kInvertLeftSide, kBackLeftSteerMotorInverted,
+                                        kBackLeftEncoderInverted);
 
         // STDDEVS
         public static final Matrix<N3, N1> odometryStandardDeviation = new Matrix<>(

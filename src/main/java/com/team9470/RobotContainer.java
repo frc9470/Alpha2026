@@ -70,15 +70,21 @@ public class RobotContainer {
     return acceleration;
   }
 
+  private final SwerveRequest.SwerveDriveBrake xLock = new SwerveRequest.SwerveDriveBrake();
+
   private void configureBindings() {
-    // Right Bumper: Auto-Aim & Shoot
-    m_driverController.rightBumper().whileTrue(
+    // ==================== TRIGGERS ====================
+
+    // Left Trigger: Intake (deploy arm + run rollers while held)
+    m_driverController.leftTrigger().whileTrue(m_superstructure.intakeCommand());
+
+    // Right Trigger: Auto-Aim & Shoot/Feed
+    m_driverController.rightTrigger().whileTrue(
         new RunCommand(() -> {
-          // Get aim result from superstructure (uses acceleration internally)
           var aim = m_superstructure.getAimResult();
 
           // Dynamic Swerve Limiting - prioritize rotation
-          final double kDriveRadius = 0.45; // meters
+          final double kDriveRadius = 0.45;
           double rotCost = Math.abs(aim.rotationCommand()) * kDriveRadius;
           double transLimit = Math.max(0.0, (MaxSpeed - rotCost) * 0.80);
 
@@ -93,12 +99,10 @@ public class RobotContainer {
             vY *= scale;
           }
 
-          // Telemetry
           SmartDashboard.putBoolean("Drive/AutoAimActive", true);
           SmartDashboard.putNumber("Drive/RotCmd", aim.rotationCommand());
           SmartDashboard.putNumber("Drive/TransLimit", transLimit);
 
-          // Drive with auto-aim rotation
           m_swerve.setControl(autoAimDrive
               .withVelocityX(vX)
               .withVelocityY(vY)
@@ -108,10 +112,27 @@ public class RobotContainer {
             .alongWith(m_superstructure.aimAndShootCommand())
             .finallyDo(() -> SmartDashboard.putBoolean("Drive/AutoAimActive", false)));
 
-    // Left Trigger: Intake
-    m_driverController.leftTrigger().whileTrue(m_superstructure.intakeCommand());
+    // ==================== BUMPERS ====================
 
-    // Default Drive (Manual)
+    // Left Bumper: Toggle intake deployed/retracted
+    m_driverController.leftBumper().onTrue(m_superstructure.toggleIntakeCommand());
+
+    // Right Bumper: Outtake (reverse rollers while held)
+    m_driverController.rightBumper().whileTrue(m_superstructure.outtakeCommand());
+
+    // ==================== FACE BUTTONS ====================
+
+    // X: X-lock wheels (defensive stance)
+    m_driverController.x().whileTrue(m_swerve.applyRequest(() -> xLock));
+
+    // B: Zero swerve heading (reset field-centric forward)
+    m_driverController.b().onTrue(m_swerve.runOnce(() -> m_swerve.seedFieldCentric()));
+
+    // A/Y: Climber (placeholder for future implementation)
+    // m_driverController.a().whileTrue(climberOutCommand);
+    // m_driverController.y().whileTrue(climberInCommand);
+
+    // ==================== DEFAULT COMMANDS ====================
     m_swerve.setDefaultCommand(
         m_swerve.applyRequest(() -> drive
             .withVelocityX(-m_driverController.getLeftY() * MaxSpeed)
