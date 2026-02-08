@@ -4,6 +4,8 @@ import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFX;
+import com.team254.lib.drivers.TalonFXFactory;
+import com.team254.lib.drivers.TalonUtil;
 
 import com.team9470.Ports;
 
@@ -44,14 +46,14 @@ public class Hopper extends SubsystemBase {
     private final StatusSignal<Current> leftCurrent;
 
     private Hopper() {
-        leftMotor = new TalonFX(Ports.HOPPER_LEFT.getDeviceNumber());
-        rightMotor = new TalonFX(Ports.HOPPER_RIGHT.getDeviceNumber());
-        topMotor = new TalonFX(Ports.HOPPER_TOP.getDeviceNumber());
+        leftMotor = TalonFXFactory.createDefaultTalon(Ports.HOPPER_LEFT);
+        rightMotor = TalonFXFactory.createDefaultTalon(Ports.HOPPER_RIGHT);
+        topMotor = TalonFXFactory.createDefaultTalon(Ports.HOPPER_TOP);
 
-        // Apply configs from HopperConstants
-        leftMotor.getConfigurator().apply(HopperConstants.kLeftConfig);
-        rightMotor.getConfigurator().apply(HopperConstants.kRightConfig);
-        topMotor.getConfigurator().apply(HopperConstants.kTopConfig);
+        // Apply configurations
+        TalonUtil.applyAndCheckConfiguration(leftMotor, HopperConstants.kLeftConfig);
+        TalonUtil.applyAndCheckConfiguration(rightMotor, HopperConstants.kRightConfig);
+        TalonUtil.applyAndCheckConfiguration(topMotor, HopperConstants.kTopConfig);
 
         // Status signals (just left motor for telemetry)
         leftVelocity = leftMotor.getVelocity();

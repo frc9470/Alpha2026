@@ -3,6 +3,8 @@ package com.team9470.subsystems.intake;
 import com.ctre.phoenix6.controls.MotionMagicVoltage;
 import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFX;
+import com.team254.lib.drivers.TalonFXFactory;
+import com.team254.lib.drivers.TalonUtil;
 
 import com.team9470.Ports;
 import com.team9470.Robot;
@@ -37,8 +39,8 @@ public class Intake extends SubsystemBase {
     }
 
     // Hardware
-    private final TalonFX pivot = new TalonFX(Ports.INTAKE_PIVOT.getDeviceNumber());
-    private final TalonFX roller = new TalonFX(Ports.INTAKE_ROLLER.getDeviceNumber());
+    private final TalonFX pivot = TalonFXFactory.createDefaultTalon(Ports.INTAKE_PIVOT);
+    private final TalonFX roller = TalonFXFactory.createDefaultTalon(Ports.INTAKE_ROLLER);
 
     // Controls
     private final MotionMagicVoltage mmRequest = new MotionMagicVoltage(0).withSlot(0);
@@ -82,11 +84,11 @@ public class Intake extends SubsystemBase {
     }
 
     private Intake() {
-        // Apply configs from IntakeConstants
-        pivot.getConfigurator().apply(IntakeConstants.kPivotConfig);
+        // Apply configurations
+        TalonUtil.applyAndCheckConfiguration(pivot, IntakeConstants.kPivotConfig);
         pivot.setPosition(0);
 
-        roller.getConfigurator().apply(IntakeConstants.kRollerConfig);
+        TalonUtil.applyAndCheckConfiguration(roller, IntakeConstants.kRollerConfig);
     }
 
     // --- Commands ---

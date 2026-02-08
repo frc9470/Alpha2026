@@ -5,6 +5,8 @@ import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.controls.PositionVoltage;
 import com.ctre.phoenix6.controls.VelocityVoltage;
 import com.ctre.phoenix6.hardware.TalonFX;
+import com.team254.lib.drivers.TalonFXFactory;
+import com.team254.lib.drivers.TalonUtil;
 
 import com.team9470.Ports;
 import com.team9470.Robot;
@@ -30,11 +32,11 @@ import java.util.function.Supplier;
 public class Shooter extends SubsystemBase {
 
     // Hardware
-    private final TalonFX flywheel1 = new TalonFX(Ports.FLYWHEEL_1.getDeviceNumber());
-    private final TalonFX flywheel2 = new TalonFX(Ports.FLYWHEEL_2.getDeviceNumber());
-    private final TalonFX flywheel3 = new TalonFX(Ports.FLYWHEEL_3.getDeviceNumber());
-    private final TalonFX flywheel4 = new TalonFX(Ports.FLYWHEEL_4.getDeviceNumber());
-    private final TalonFX hoodMotor = new TalonFX(Ports.HOOD_MOTOR.getDeviceNumber());
+    private final TalonFX flywheel1 = TalonFXFactory.createDefaultTalon(Ports.FLYWHEEL_1);
+    private final TalonFX flywheel2 = TalonFXFactory.createDefaultTalon(Ports.FLYWHEEL_2);
+    private final TalonFX flywheel3 = TalonFXFactory.createDefaultTalon(Ports.FLYWHEEL_3);
+    private final TalonFX flywheel4 = TalonFXFactory.createDefaultTalon(Ports.FLYWHEEL_4);
+    private final TalonFX hoodMotor = TalonFXFactory.createDefaultTalon(Ports.HOOD_MOTOR);
 
     // Controls
     private final VelocityVoltage flywheelRequest = new VelocityVoltage(0);
@@ -56,11 +58,11 @@ public class Shooter extends SubsystemBase {
 
     public Shooter() {
         // Configure motors
-        flywheel1.getConfigurator().apply(ShooterConstants.kFlywheelConfig);
-        flywheel2.getConfigurator().apply(ShooterConstants.kFlywheelConfig);
-        flywheel3.getConfigurator().apply(ShooterConstants.kFlywheelConfig);
-        flywheel4.getConfigurator().apply(ShooterConstants.kFlywheelConfig);
-        hoodMotor.getConfigurator().apply(ShooterConstants.kHoodConfig);
+        TalonUtil.applyAndCheckConfiguration(flywheel1, ShooterConstants.kFlywheelConfig);
+        TalonUtil.applyAndCheckConfiguration(flywheel2, ShooterConstants.kFlywheelConfig);
+        TalonUtil.applyAndCheckConfiguration(flywheel3, ShooterConstants.kFlywheelConfig);
+        TalonUtil.applyAndCheckConfiguration(flywheel4, ShooterConstants.kFlywheelConfig);
+        TalonUtil.applyAndCheckConfiguration(hoodMotor, ShooterConstants.kHoodConfig);
 
         // Get status signals
         flywheelVelocity = flywheel1.getVelocity();
