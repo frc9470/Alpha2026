@@ -152,7 +152,11 @@ public class ProjectileSimulation {
     }
 
     private boolean isHoodAtSetpoint(double targetHoodRot) {
-        double currentHoodRot = ShooterConstants.hoodRadiansToMechanismRotations(hoodSim.getAngleRads());
+        // Sim uses launch angle; convert to surface angle mechanism rotations for
+        // comparison
+        double launchRad = hoodSim.getAngleRads();
+        double surfaceRad = ShooterConstants.launchToSurfaceRad(launchRad);
+        double currentHoodRot = ShooterConstants.surfaceRadToMechanismRotations(surfaceRad);
         return Math.abs(currentHoodRot - targetHoodRot) < 0.01;
     }
 
@@ -194,12 +198,12 @@ public class ProjectileSimulation {
         Translation3d muzzleWorld = new Translation3d(robotPose.getX(), robotPose.getY(), 0)
                 .plus(muzzleOffset.rotateBy(new Rotation3d(0, 0, robotPose.getRotation().getRadians())));
 
-        // Launch direction
+        // Launch direction - sim angle is launch angle (from horizontal)
         Rotation2d yawField = robotPose.getRotation();
-        double hoodPitch = hoodRad;
+        double launchPitch = hoodRad; // hoodSim returns launch angle
 
-        double cosP = Math.cos(hoodPitch);
-        double sinP = Math.sin(hoodPitch);
+        double cosP = Math.cos(launchPitch);
+        double sinP = Math.sin(launchPitch);
         double cosY = yawField.getCos();
         double sinY = yawField.getSin();
 

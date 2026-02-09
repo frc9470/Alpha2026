@@ -68,9 +68,9 @@ public class Superstructure extends SubsystemBase {
 
     @Override
     public void periodic() {
-        // Continuous tracking - update shooter setpoint
-        var solution = AutoAim.calculate(poseSupplier.get(), speedsSupplier.get(), accelerationSupplier.get());
-        shooter.setSetpoint(solution);
+        // No unconditional setSetpoint here - AutoAim setpoints are applied
+        // only by shooting commands (shootCommand, aimAndShootCommand).
+        // This prevents overriding manual flywheel/hood commands (e.g. debug Y button).
     }
 
     // ==================== HIGH-LEVEL COMMANDS ====================
@@ -106,8 +106,7 @@ public class Superstructure extends SubsystemBase {
     public Command shootCommand(Supplier<Double> rotationRateConsumer) {
         return Commands.run(() -> {
             var solution = AutoAim.calculate(poseSupplier.get(), speedsSupplier.get());
-
-            // Calculate rotation error and command
+            shooter.setSetpoint(solution);
             double rotError = solution.targetRobotYaw()
                     .minus(poseSupplier.get().getRotation())
                     .getRadians();
@@ -166,6 +165,7 @@ public class Superstructure extends SubsystemBase {
     public Command aimAndShootCommand() {
         return Commands.run(() -> {
             var result = getAimResult();
+            shooter.setSetpoint(result.solution());
             boolean canFire = result.isAligned() && result.solution().isValid() && shooter.isAtSetpoint();
 
             // Control shooter and hopper based on alignment

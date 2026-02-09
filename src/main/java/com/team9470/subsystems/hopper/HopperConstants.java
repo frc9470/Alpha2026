@@ -8,7 +8,7 @@ public class HopperConstants {
     // NOTE: CAN IDs are in Ports.java (HOPPER_LEFT, HOPPER_RIGHT, HOPPER_TOP)
 
     // Control
-    public static final double kFeedVoltage = 8.0; // Voltage when feeding to shooter
+    public static final double kFeedVoltage = -8.0; // Voltage when feeding to shooter
 
     // Motor Configs
     public static final TalonFXConfiguration kLeftConfig = new TalonFXConfiguration();
@@ -18,6 +18,7 @@ public class HopperConstants {
     static {
         // Left Motor Config
         kLeftConfig.MotorOutput.NeutralMode = NeutralModeValue.Brake;
+        kRightConfig.MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive;
         kLeftConfig.CurrentLimits.withSupplyCurrentLimit(40.0).withSupplyCurrentLimitEnable(true);
 
         // Right Motor Config (inverted for opposing roller direction)

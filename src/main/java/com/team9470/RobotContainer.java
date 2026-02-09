@@ -5,6 +5,7 @@
 package com.team9470;
 
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 
@@ -128,9 +129,22 @@ public class RobotContainer {
     // B: Zero swerve heading (reset field-centric forward)
     m_driverController.b().onTrue(m_swerve.runOnce(() -> m_swerve.seedFieldCentric()));
 
-    // A/Y: Climber (placeholder for future implementation)
-    // m_driverController.a().whileTrue(climberOutCommand);
-    // m_driverController.y().whileTrue(climberInCommand);
+    // A: Debug - Run hopper while held
+    m_driverController.a().whileTrue(m_superstructure.getHopper().runCommand());
+
+    // Y: Debug - Spin up shooter + feed hopper while held
+    m_driverController.y().whileTrue(
+        Commands.startEnd(
+            () -> {
+              m_superstructure.getShooter().setFlywheelSpeed(50.0); // ~3000 RPM
+              m_superstructure.getShooter().setFiring(true);
+              m_superstructure.getHopper().run();
+            },
+            () -> {
+              m_superstructure.getShooter().setFlywheelSpeed(0);
+              m_superstructure.getShooter().setFiring(false);
+              m_superstructure.getHopper().stop();
+            }));
 
     // ==================== DEFAULT COMMANDS ====================
     m_swerve.setDefaultCommand(

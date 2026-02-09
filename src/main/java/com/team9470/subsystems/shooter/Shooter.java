@@ -1,9 +1,8 @@
 package com.team9470.subsystems.shooter;
 
-import com.ctre.phoenix6.BaseStatusSignal;
-import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.controls.PositionVoltage;
 import com.ctre.phoenix6.controls.VelocityVoltage;
+import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.team254.lib.drivers.TalonFXFactory;
 import com.team254.lib.drivers.TalonUtil;
@@ -16,9 +15,11 @@ import com.team9470.util.AutoAim.ShootingSolution;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.util.Units;
-import edu.wpi.first.units.measure.AngularVelocity;
-import edu.wpi.first.units.measure.Angle;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.networktables.BooleanPublisher;
+import edu.wpi.first.networktables.DoublePublisher;
+import edu.wpi.first.networktables.NetworkTable;
+import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.networktables.StringPublisher;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 import java.util.function.Supplier;
@@ -41,14 +42,13 @@ public class Shooter extends SubsystemBase {
     // Controls
     private final VelocityVoltage flywheelRequest = new VelocityVoltage(0);
     private final PositionVoltage hoodRequest = new PositionVoltage(0);
-
-    // Status signals
-    private final StatusSignal<AngularVelocity> flywheelVelocity;
-    private final StatusSignal<Angle> hoodPosition;
+    private final VoltageOut voltRequest = new VoltageOut(0);
 
     // State
     private double targetSpeedRPS = 0.0;
-    private double targetHoodAngleRotations = 0.0;
+    private double targetHoodAngleRotations = ShooterConstants.surfaceRadToMechanismRotations(
+            ShooterConstants.kHoodHomePosition.in(edu.wpi.first.units.Units.Radians)); // Surface angle (mechanism
+                                                                                       // rotations)
     private boolean isFiring = false;
     private boolean needsHoming = true;
 
@@ -56,25 +56,58 @@ public class Shooter extends SubsystemBase {
     private Supplier<Pose2d> poseSupplier = Pose2d::new;
     private Supplier<ChassisSpeeds> speedsSupplier = ChassisSpeeds::new;
 
+    // ==================== TELEMETRY ====================
+    private final NetworkTable nt = NetworkTableInstance.getDefault().getTable("Shooter");
+
+    // State
+    private final BooleanPublisher ntHoming = nt.getBooleanTopic("Homing").publish();
+    private final BooleanPublisher ntFiring = nt.getBooleanTopic("Firing").publish();
+    private final BooleanPublisher ntAtSetpoint = nt.getBooleanTopic("AtSetpoint").publish();
+    private final StringPublisher ntState = nt.getStringTopic("State").publish();
+
+    // Hood position (degrees)
+    private final DoublePublisher ntHoodGoalDeg = makeDegPublisher("Hood/GoalDeg");
+    private final DoublePublisher ntHoodSetpointDeg = makeDegPublisher("Hood/SetpointDeg");
+    private final DoublePublisher ntHoodPositionDeg = makeDegPublisher("Hood/PositionDeg");
+    private final DoublePublisher ntHoodErrorDeg = makeDegPublisher("Hood/ErrorDeg");
+
+    // Hood motor signals
+    private final DoublePublisher ntHoodVelocity = makePublisher("Hood/VelocityDegPerSec", "deg/s");
+    private final DoublePublisher ntHoodStatorCurrent = makePublisher("Hood/StatorCurrentAmps", "A");
+    private final DoublePublisher ntHoodCurrent = makePublisher("Hood/SupplyCurrentAmps", "A");
+    private final DoublePublisher ntHoodVoltage = makePublisher("Hood/AppliedVolts", "V");
+
+    // Flywheel
+    private final DoublePublisher ntFlywheelTargetRPS = makePublisher("Flywheel/TargetRPS", "rps");
+    private final DoublePublisher ntFlywheelCurrentRPS = makePublisher("Flywheel/CurrentRPS", "rps");
+    private final DoublePublisher ntFlywheelErrorRPS = makePublisher("Flywheel/ErrorRPS", "rps");
+
+    private DoublePublisher makeDegPublisher(String name) {
+        return makePublisher(name, "deg");
+    }
+
+    private DoublePublisher makePublisher(String name, String unit) {
+        var topic = nt.getDoubleTopic(name);
+        topic.setProperty("unit", "\"" + unit + "\"");
+        return topic.publish();
+    }
+
+    /** Clamp hood rotations to valid surface angle range. */
+    private static double clampHoodRotations(double rotations) {
+        double minRot = ShooterConstants.surfaceRadToMechanismRotations(
+                ShooterConstants.kMinHoodAngle.in(edu.wpi.first.units.Units.Radians));
+        double maxRot = ShooterConstants.surfaceRadToMechanismRotations(
+                ShooterConstants.kMaxHoodAngle.in(edu.wpi.first.units.Units.Radians));
+        return Math.max(minRot, Math.min(maxRot, rotations));
+    }
+
     public Shooter() {
         // Configure motors
         TalonUtil.applyAndCheckConfiguration(flywheel1, ShooterConstants.kFlywheelConfig);
-        TalonUtil.applyAndCheckConfiguration(flywheel2, ShooterConstants.kFlywheelConfig);
+        TalonUtil.applyAndCheckConfiguration(flywheel2, ShooterConstants.kFlywheelInvertedConfig);
         TalonUtil.applyAndCheckConfiguration(flywheel3, ShooterConstants.kFlywheelConfig);
-        TalonUtil.applyAndCheckConfiguration(flywheel4, ShooterConstants.kFlywheelConfig);
+        TalonUtil.applyAndCheckConfiguration(flywheel4, ShooterConstants.kFlywheelInvertedConfig);
         TalonUtil.applyAndCheckConfiguration(hoodMotor, ShooterConstants.kHoodConfig);
-
-        // Get status signals
-        flywheelVelocity = flywheel1.getVelocity();
-        hoodPosition = hoodMotor.getPosition();
-
-        // Optimize CAN bus
-        BaseStatusSignal.setUpdateFrequencyForAll(50, flywheelVelocity, hoodPosition);
-        flywheel1.optimizeBusUtilization();
-        flywheel2.optimizeBusUtilization();
-        flywheel3.optimizeBusUtilization();
-        flywheel4.optimizeBusUtilization();
-        hoodMotor.optimizeBusUtilization();
 
         // Initialize simulation if needed
         if (Robot.isSimulation()) {
@@ -112,8 +145,11 @@ public class Shooter extends SubsystemBase {
         double efficiency = ShooterConstants.kFlywheelEfficiency;
         this.targetSpeedRPS = exitSpeed / (efficiency * 2.0 * Math.PI * wheelRadius);
 
-        // Pitch angle -> Hood rotations
-        this.targetHoodAngleRotations = ShooterConstants.hoodRadiansToMechanismRotations(solution.pitch().getRadians());
+        // Pitch angle (launch) -> Surface angle -> Hood mechanism rotations
+        double launchRad = solution.pitch().getRadians();
+        double surfaceRad = ShooterConstants.launchToSurfaceRad(launchRad);
+        this.targetHoodAngleRotations = clampHoodRotations(
+                ShooterConstants.surfaceRadToMechanismRotations(surfaceRad));
     }
 
     /**
@@ -127,7 +163,7 @@ public class Shooter extends SubsystemBase {
      * Set hood angle directly (rotations).
      */
     public void setHoodAngle(double rotations) {
-        this.targetHoodAngleRotations = rotations;
+        this.targetHoodAngleRotations = clampHoodRotations(rotations);
     }
 
     /**
@@ -169,62 +205,74 @@ public class Shooter extends SubsystemBase {
         if (Robot.isSimulation()) {
             return ProjectileSimulation.getInstance().getFlywheelVelocityRPS();
         }
-        return ShooterConstants.flywheelMotorRpsToMechanismRps(flywheelVelocity.getValueAsDouble());
+        return flywheel1.getVelocity().getValueAsDouble();
     }
 
     public double getCurrentHoodRotations() {
         if (Robot.isSimulation()) {
-            return ShooterConstants
-                    .hoodRadiansToMechanismRotations(ProjectileSimulation.getInstance().getHoodAngleRad());
+            // Sim returns launch angle in rad -> convert to surface -> mechanism rotations
+            double launchRad = ProjectileSimulation.getInstance().getHoodAngleRad();
+            double surfaceRad = ShooterConstants.launchToSurfaceRad(launchRad);
+            return ShooterConstants.surfaceRadToMechanismRotations(surfaceRad);
         }
-        return hoodPosition.getValueAsDouble();
+        return hoodMotor.getPosition().getValueAsDouble();
     }
 
     @Override
     public void periodic() {
+        // === Flywheel control (always runs, independent of homing) ===
+        flywheel1.setControl(flywheelRequest.withVelocity(targetSpeedRPS));
+        flywheel2.setControl(flywheelRequest.withVelocity(targetSpeedRPS));
+        flywheel3.setControl(flywheelRequest.withVelocity(targetSpeedRPS));
+        flywheel4.setControl(flywheelRequest.withVelocity(targetSpeedRPS));
+
+        // === Hood control (gated by homing) ===
         if (needsHoming) {
             // Drive hood toward min-angle hardstop
-            hoodMotor.setControl(new com.ctre.phoenix6.controls.VoltageOut(ShooterConstants.kHoodHomingVoltage));
-
-            // Keep flywheels stopped during homing
-            flywheel1.setControl(flywheelRequest.withVelocity(0));
-            flywheel2.setControl(flywheelRequest.withVelocity(0));
-            flywheel3.setControl(flywheelRequest.withVelocity(0));
-            flywheel4.setControl(flywheelRequest.withVelocity(0));
+            hoodMotor.setControl(voltRequest.withOutput(ShooterConstants.kHoodHomingVoltage));
 
             // Check for stall (hit hardstop): high current AND low velocity
-            double current = hoodMotor.getSupplyCurrent().getValueAsDouble();
+            double current = hoodMotor.getStatorCurrent().getValueAsDouble();
             double velocity = Math.abs(hoodMotor.getVelocity().getValueAsDouble());
             if (current > ShooterConstants.kHoodStallCurrentThreshold && velocity < 0.5) {
-                hoodMotor.setControl(new com.ctre.phoenix6.controls.VoltageOut(0));
-                hoodMotor.setPosition(ShooterConstants.hoodRadiansToMechanismRotations(
+                hoodMotor.setControl(voltRequest.withOutput(0));
+                hoodMotor.setPosition(ShooterConstants.surfaceRadToMechanismRotations(
                         ShooterConstants.kHoodHomePosition.in(edu.wpi.first.units.Units.Radians)));
                 needsHoming = false;
             }
-
-            SmartDashboard.putBoolean("Shooter/Homing", true);
-            return;
+        } else {
+            // Normal hood control
+            hoodMotor.setControl(hoodRequest.withPosition(targetHoodAngleRotations));
         }
 
-        // --- Normal operation ---
+        // === Telemetry (always runs) ===
+        double currentHoodRot = getCurrentHoodRotations();
+        double currentSurfaceRad = ShooterConstants.mechanismRotationsToSurfaceRad(currentHoodRot);
+        double targetSurfaceRad = ShooterConstants.mechanismRotationsToSurfaceRad(targetHoodAngleRotations);
+        double currentHoodDeg = Math.toDegrees(currentSurfaceRad);
+        double targetHoodDeg = Math.toDegrees(targetSurfaceRad);
+        double currentRPS = getCurrentFlywheelRPS();
 
-        // Apply motor commands
-        double motorRPS = ShooterConstants.flywheelMechanismRpsToMotorRps(targetSpeedRPS);
-        flywheel1.setControl(flywheelRequest.withVelocity(motorRPS));
-        flywheel2.setControl(flywheelRequest.withVelocity(motorRPS));
-        flywheel3.setControl(flywheelRequest.withVelocity(motorRPS));
-        flywheel4.setControl(flywheelRequest.withVelocity(motorRPS));
+        // State
+        ntHoming.set(needsHoming);
+        ntFiring.set(isFiring);
+        ntAtSetpoint.set(!needsHoming && isAtSetpoint());
+        ntState.set(needsHoming ? "HOMING" : (isFiring ? "FIRING" : (targetSpeedRPS > 0 ? "SPINNING_UP" : "IDLE")));
 
-        hoodMotor.setControl(hoodRequest.withPosition(targetHoodAngleRotations));
+        // Hood
+        ntHoodGoalDeg.set(targetHoodDeg);
+        ntHoodSetpointDeg.set(targetHoodDeg);
+        ntHoodPositionDeg.set(currentHoodDeg);
+        ntHoodErrorDeg.set(targetHoodDeg - currentHoodDeg);
+        ntHoodVelocity.set(hoodMotor.getVelocity().getValueAsDouble() * 360.0);
+        ntHoodStatorCurrent.set(hoodMotor.getStatorCurrent().getValueAsDouble());
+        ntHoodCurrent.set(hoodMotor.getSupplyCurrent().getValueAsDouble());
+        ntHoodVoltage.set(hoodMotor.getMotorVoltage().getValueAsDouble());
 
-        // Telemetry
-        SmartDashboard.putBoolean("Shooter/Homing", false);
-        SmartDashboard.putNumber("Shooter/TargetRPS", targetSpeedRPS);
-        SmartDashboard.putNumber("Shooter/CurrentRPS", getCurrentFlywheelRPS());
-        SmartDashboard.putNumber("Shooter/TargetHoodRot", targetHoodAngleRotations);
-        SmartDashboard.putNumber("Shooter/CurrentHoodRot", getCurrentHoodRotations());
-        SmartDashboard.putBoolean("Shooter/AtSetpoint", isAtSetpoint());
-        SmartDashboard.putBoolean("Shooter/Firing", isFiring);
+        // Flywheel
+        ntFlywheelTargetRPS.set(targetSpeedRPS);
+        ntFlywheelCurrentRPS.set(currentRPS);
+        ntFlywheelErrorRPS.set(targetSpeedRPS - currentRPS);
     }
 
     @Override
@@ -235,19 +283,22 @@ public class Shooter extends SubsystemBase {
 
         // Feed simulated values back to motor sim states
         double flywheelRPS = sim.getFlywheelVelocityRPS();
-        flywheel1.getSimState().setRotorVelocity(ShooterConstants.flywheelMechanismRpsToMotorRps(flywheelRPS));
+        // Sim API needs rotor (motor) velocity, so we convert back to motor space
+        flywheel1.getSimState().setRotorVelocity(flywheelRPS * ShooterConstants.kFlywheelGearRatio);
 
-        double hoodAngleRad = sim.getHoodAngleRad();
-        double hoodVelRadPerSec = sim.getHoodVelocityRadPerSec();
-        hoodMotor.getSimState().setRawRotorPosition(
-                ShooterConstants.hoodMechanismRotationsToMotorRotations(
-                        ShooterConstants.hoodRadiansToMechanismRotations(hoodAngleRad)));
-        hoodMotor.getSimState().setRotorVelocity(
-                ShooterConstants.hoodMechanismRpsToMotorRps(
-                        ShooterConstants.hoodRadiansToMechanismRotations(hoodVelRadPerSec)));
+        // Sim returns launch angle in rad -> convert to surface -> motor rotor position
+        double launchAngleRad = sim.getHoodAngleRad();
+        double surfaceRad = ShooterConstants.launchToSurfaceRad(launchAngleRad);
+        double mechanismRot = ShooterConstants.surfaceRadToMechanismRotations(surfaceRad);
+        hoodMotor.getSimState().setRawRotorPosition(mechanismRot * ShooterConstants.kHoodGearRatio);
 
-        // Telemetry
-        SmartDashboard.putNumber("Shooter/MeasuredBPS", sim.getMeasuredBPS());
+        double launchVelRadPerSec = sim.getHoodVelocityRadPerSec();
+        // Surface velocity = -launch velocity (derivative of π/2 - θ)
+        double surfaceVelRot = Units.radiansToRotations(-launchVelRadPerSec);
+        hoodMotor.getSimState().setRotorVelocity(surfaceVelRot * ShooterConstants.kHoodGearRatio);
+
+        // Sim telemetry
+        makePublisher("Sim/MeasuredBPS", "bps").set(sim.getMeasuredBPS());
     }
 
     /**

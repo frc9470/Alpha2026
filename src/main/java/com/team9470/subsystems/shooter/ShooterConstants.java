@@ -7,6 +7,8 @@ import edu.wpi.first.units.measure.Distance;
 import edu.wpi.first.units.measure.Mass;
 import edu.wpi.first.units.measure.MomentOfInertia;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
+import com.ctre.phoenix6.signals.GravityTypeValue;
+import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 
 public class ShooterConstants {
@@ -26,52 +28,52 @@ public class ShooterConstants {
         public static final Distance kHoodLength = Meters.of(0.2);
         public static final Mass kHoodMass = Kilograms.of(2.0);
 
-        public static final Angle kMinHoodAngle = Radians.of(0.0);
-        public static final Angle kMaxHoodAngle = Degrees.of(85.0);
+        // Hood surface angle limits (angle of hood surface from horizontal)
+        // 0° = horizontal, 90° = vertical
+        public static final Angle kMinHoodAngle = Degrees.of(15.0); // most tilted back (steepest shot)
+        public static final Angle kMaxHoodAngle = Degrees.of(45.0); // most upright (flattest shot)
 
         // Field Geometry
         public static final Distance kShooterOffsetX = Meters.of(0.2); // Forward from robot center
         public static final Distance kShooterOffsetZ = Meters.of(0.5); // Up from center
 
         // ==================== HOMING ====================
-        // Hood homes to hardstop at minimum angle (0 degrees)
-        public static final double kHoodHomingVoltage = -2.0; // Negative = toward min
-        public static final double kHoodStallCurrentThreshold = 15.0; // Amps
+        // Hood homes to hardstop at minimum surface angle
+        public static final double kHoodHomingVoltage = -2.0; // Toward min surface angle
+        public static final double kHoodStallCurrentThreshold = 20.0; // Amps
         public static final double kHoodStallTimeThreshold = 0.1; // Seconds at stall
-        public static final Angle kHoodHomePosition = Degrees.of(0.0); // Angle at hardstop
+        public static final Angle kHoodHomePosition = Degrees.of(14.0); // Surface angle at hardstop
 
         // Motor Configs
         public static final TalonFXConfiguration kFlywheelConfig = new TalonFXConfiguration();
+        public static final TalonFXConfiguration kFlywheelInvertedConfig = new TalonFXConfiguration();
         public static final TalonFXConfiguration kHoodConfig = new TalonFXConfiguration();
 
         // -------------------- Unit / Gear Conversion Helpers --------------------
         // Keep all gear-ratio math here to avoid duplicated scaling in subsystems.
-        public static double flywheelMechanismRpsToMotorRps(double mechanismRps) {
-                return mechanismRps * kFlywheelGearRatio;
+
+        /**
+         * Convert surface angle (rad) to launch angle (rad). Launch = π/2 - surface.
+         */
+        public static double surfaceToLaunchRad(double surfaceRad) {
+                return (Math.PI / 2.0) - surfaceRad;
         }
 
-        public static double flywheelMotorRpsToMechanismRps(double motorRps) {
-                return motorRps / kFlywheelGearRatio;
+        /**
+         * Convert launch angle (rad) to surface angle (rad). Surface = π/2 - launch.
+         */
+        public static double launchToSurfaceRad(double launchRad) {
+                return (Math.PI / 2.0) - launchRad;
         }
 
-        public static double hoodRadiansToMechanismRotations(double hoodRadians) {
-                return Units.radiansToRotations(hoodRadians);
+        /** Convert surface angle (radians) to mechanism rotations. */
+        public static double surfaceRadToMechanismRotations(double surfaceRad) {
+                return Units.radiansToRotations(surfaceRad);
         }
 
-        public static double hoodMechanismRotationsToRadians(double hoodMechanismRotations) {
-                return Units.rotationsToRadians(hoodMechanismRotations);
-        }
-
-        public static double hoodMechanismRotationsToMotorRotations(double hoodMechanismRotations) {
-                return hoodMechanismRotations * kHoodGearRatio;
-        }
-
-        public static double hoodMotorRotationsToMechanismRotations(double hoodMotorRotations) {
-                return hoodMotorRotations / kHoodGearRatio;
-        }
-
-        public static double hoodMechanismRpsToMotorRps(double hoodMechanismRps) {
-                return hoodMechanismRps * kHoodGearRatio;
+        /** Convert mechanism rotations to surface angle (radians). */
+        public static double mechanismRotationsToSurfaceRad(double mechanismRotations) {
+                return Units.rotationsToRadians(mechanismRotations);
         }
 
         static {
@@ -82,7 +84,20 @@ public class ShooterConstants {
                 kFlywheelConfig.Slot0.kV = 0.125;
                 kFlywheelConfig.Slot0.kS = 0.0;
                 kFlywheelConfig.MotorOutput.NeutralMode = NeutralModeValue.Coast;
+                kFlywheelConfig.MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive;
+                kFlywheelConfig.Feedback.SensorToMechanismRatio = kFlywheelGearRatio;
                 kFlywheelConfig.CurrentLimits.withSupplyCurrentLimit(80.0).withSupplyCurrentLimitEnable(true);
+
+                // Flywheel Inverted Config (motors 2 & 4)
+                kFlywheelInvertedConfig.Slot0.kP = 0.25;
+                kFlywheelInvertedConfig.Slot0.kI = 0.0;
+                kFlywheelInvertedConfig.Slot0.kD = 0.01;
+                kFlywheelInvertedConfig.Slot0.kV = 0.125;
+                kFlywheelInvertedConfig.Slot0.kS = 0.0;
+                kFlywheelInvertedConfig.MotorOutput.NeutralMode = NeutralModeValue.Coast;
+                kFlywheelInvertedConfig.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
+                kFlywheelInvertedConfig.Feedback.SensorToMechanismRatio = kFlywheelGearRatio;
+                kFlywheelInvertedConfig.CurrentLimits.withSupplyCurrentLimit(80.0).withSupplyCurrentLimitEnable(true);
 
                 // Hood Config
                 kHoodConfig.Slot0.kP = 40.0;
@@ -90,7 +105,9 @@ public class ShooterConstants {
                 kHoodConfig.Slot0.kD = 0.0;
                 kHoodConfig.Slot0.kV = 0.0;
                 kHoodConfig.Slot0.kG = 0.2; // Gravity hold (Volts)
+                kHoodConfig.Slot0.GravityType = GravityTypeValue.Arm_Cosine;
                 kHoodConfig.MotorOutput.NeutralMode = NeutralModeValue.Brake;
+                kHoodConfig.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
                 kHoodConfig.Feedback.SensorToMechanismRatio = kHoodGearRatio;
                 kHoodConfig.CurrentLimits.withSupplyCurrentLimit(40.0).withSupplyCurrentLimitEnable(true);
         }
