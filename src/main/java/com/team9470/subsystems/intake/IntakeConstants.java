@@ -16,11 +16,15 @@ public class IntakeConstants {
     // Setpoints
     public static final Angle kDeployAngle = Degrees.of(-35.0); // Down/Floor
     public static final Angle kRetractAngle = Degrees.of(90.0); // Up/Stowed
-    public static final double kRollerVoltage = 8.0;
+    public static final double kRollerVoltage = 12.0;
 
     // Simulation
     public static final double kIntakeLength = 0.3; // meters
     public static final double kIntakeMass = 4.0; // kg
+
+    // Current Limits
+    public static final double kPivotSupplyCurrentLimit = 25.0;
+    public static final double kRollerSupplyCurrentLimit = 20.0;
 
     // ==================== HOMING ====================
     // Intake homes to hardstop at retract position (90 degrees up)
@@ -63,11 +67,15 @@ public class IntakeConstants {
         kPivotConfig.MotionMagic.MotionMagicCruiseVelocity = 4.0; // rad/s
         kPivotConfig.MotionMagic.MotionMagicAcceleration = 8.0; // rad/s^2
         kPivotConfig.MotionMagic.MotionMagicJerk = 0;
-        kPivotConfig.CurrentLimits.withSupplyCurrentLimit(40.0).withSupplyCurrentLimitEnable(true);
+        kPivotConfig.CurrentLimits
+                .withSupplyCurrentLimit(kPivotSupplyCurrentLimit)
+                .withSupplyCurrentLimitEnable(true);
 
         // Roller Config
         kRollerConfig.MotorOutput.NeutralMode = NeutralModeValue.Coast;
         kRollerConfig.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
-        kRollerConfig.CurrentLimits.withSupplyCurrentLimit(40.0).withSupplyCurrentLimitEnable(true);
+        kRollerConfig.CurrentLimits
+                .withSupplyCurrentLimit(kRollerSupplyCurrentLimit)
+                .withSupplyCurrentLimitEnable(true);
     }
 }

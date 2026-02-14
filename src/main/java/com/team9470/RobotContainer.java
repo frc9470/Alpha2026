@@ -21,8 +21,8 @@ import static edu.wpi.first.units.Units.*;
 
 public class RobotContainer {
 
-  private double MaxSpeed = TunerConstants.kSpeedAt12Volts.in(MetersPerSecond);
-  private double MaxAngularRate = TunerConstants.maxAngularVelocity;
+  private final double MaxSpeed = TunerConstants.kSpeedAt12Volts.in(MetersPerSecond);
+  private final double MaxAngularRate = Math.toRadians(TunerConstants.maxAngularVelocity);
 
   // Swerve requests
   private final SwerveRequest.FieldCentric drive = new SwerveRequest.FieldCentric()
@@ -47,8 +47,6 @@ public class RobotContainer {
   private static final double LOOP_PERIOD = 0.02; // 20ms standard FRC loop time
 
   public RobotContainer() {
-    MaxAngularRate = Math.toRadians(TunerConstants.maxAngularVelocity);
-
     // Connect swerve context to superstructure (with acceleration supplier)
     m_superstructure.setDriveContext(
         m_swerve::getPose,

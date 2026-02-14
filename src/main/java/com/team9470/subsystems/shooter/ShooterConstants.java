@@ -28,6 +28,10 @@ public class ShooterConstants {
         public static final Distance kHoodLength = Meters.of(0.2);
         public static final Mass kHoodMass = Kilograms.of(2.0);
 
+        // Current Limits
+        public static final double kFlywheelSupplyCurrentLimit = 40.0;
+        public static final double kHoodSupplyCurrentLimit = 25.0;
+
         // Hood surface angle limits (angle of hood surface from horizontal)
         // 0° = horizontal, 90° = vertical
         public static final Angle kMinHoodAngle = Degrees.of(15.0); // most tilted back (steepest shot)
@@ -86,7 +90,9 @@ public class ShooterConstants {
                 kFlywheelConfig.MotorOutput.NeutralMode = NeutralModeValue.Coast;
                 kFlywheelConfig.MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive;
                 kFlywheelConfig.Feedback.SensorToMechanismRatio = kFlywheelGearRatio;
-                kFlywheelConfig.CurrentLimits.withSupplyCurrentLimit(80.0).withSupplyCurrentLimitEnable(true);
+                kFlywheelConfig.CurrentLimits
+                                .withSupplyCurrentLimit(kFlywheelSupplyCurrentLimit)
+                                .withSupplyCurrentLimitEnable(true);
 
                 // Flywheel Inverted Config (motors 2 & 4)
                 kFlywheelInvertedConfig.Slot0.kP = 0.25;
@@ -97,7 +103,9 @@ public class ShooterConstants {
                 kFlywheelInvertedConfig.MotorOutput.NeutralMode = NeutralModeValue.Coast;
                 kFlywheelInvertedConfig.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
                 kFlywheelInvertedConfig.Feedback.SensorToMechanismRatio = kFlywheelGearRatio;
-                kFlywheelInvertedConfig.CurrentLimits.withSupplyCurrentLimit(80.0).withSupplyCurrentLimitEnable(true);
+                kFlywheelInvertedConfig.CurrentLimits
+                                .withSupplyCurrentLimit(kFlywheelSupplyCurrentLimit)
+                                .withSupplyCurrentLimitEnable(true);
 
                 // Hood Config
                 kHoodConfig.Slot0.kP = 40.0;
@@ -109,6 +117,8 @@ public class ShooterConstants {
                 kHoodConfig.MotorOutput.NeutralMode = NeutralModeValue.Brake;
                 kHoodConfig.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
                 kHoodConfig.Feedback.SensorToMechanismRatio = kHoodGearRatio;
-                kHoodConfig.CurrentLimits.withSupplyCurrentLimit(40.0).withSupplyCurrentLimitEnable(true);
+                kHoodConfig.CurrentLimits
+                                .withSupplyCurrentLimit(kHoodSupplyCurrentLimit)
+                                .withSupplyCurrentLimitEnable(true);
         }
 }
