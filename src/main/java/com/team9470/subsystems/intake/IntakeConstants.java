@@ -16,7 +16,7 @@ public class IntakeConstants {
     // Setpoints
     public static final Angle kDeployAngle = Degrees.of(-35.0); // Down/Floor
     public static final Angle kRetractAngle = Degrees.of(90.0); // Up/Stowed
-    public static final double kRollerVoltage = 12.0;
+    public static final double kRollerVoltage = 8.0;
 
     // Simulation
     public static final double kIntakeLength = 0.3; // meters

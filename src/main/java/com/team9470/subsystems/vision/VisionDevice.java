@@ -50,7 +50,7 @@ public class VisionDevice {
                 photonPoseEstimator.getRobotToCameraTransform());
 
         List<PhotonPipelineResult> results = photonCamera.getAllUnreadResults();
-        SmartDashboard.putNumber("Vision/" + photonCamera.getName() + "/results", results.size());
+        SmartDashboard.putNumber("Vision/" + photonCamera.getName() + "/ResultCount", results.size());
 
         photonPoseEstimator.addHeadingData(Timer.getFPGATimestamp(), swerve.getPose().getRotation());
         for (PhotonPipelineResult result : results) {
@@ -152,8 +152,8 @@ public class VisionDevice {
             double timestamp) {
 
         LogUtil.recordPose3d("Vision/" + photonCamera.getName() + "/Tag Poses", tagPoses.toArray(new Pose3d[0]));
-        SmartDashboard.putNumber("Vision/" + photonCamera.getName() + "/N Tags Seen", tagPoses.size());
-        SmartDashboard.putNumber("Vision/" + photonCamera.getName() + "/Calculated STDev", xyStdDev);
+        SmartDashboard.putNumber("Vision/" + photonCamera.getName() + "/TagCount", tagPoses.size());
+        SmartDashboard.putNumber("Vision/" + photonCamera.getName() + "/XYStdDev", xyStdDev);
         LogUtil.recordPose3d("Vision/" + photonCamera.getName() + "/Camera Pose", camera_pose);
         LogUtil.recordPose3d(
                 "Vision/" + photonCamera.getName() + "/Robot Pose", robotPose);

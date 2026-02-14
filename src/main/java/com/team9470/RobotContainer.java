@@ -11,6 +11,7 @@ import edu.wpi.first.math.kinematics.ChassisSpeeds;
 
 import com.team9470.subsystems.swerve.Swerve;
 import com.team9470.subsystems.Superstructure;
+import com.team9470.subsystems.shooter.ShooterConstants;
 import com.ctre.phoenix6.swerve.SwerveModule;
 import com.ctre.phoenix6.swerve.SwerveRequest;
 import edu.wpi.first.wpilibj2.command.RunCommand;
@@ -46,6 +47,15 @@ public class RobotContainer {
   private ChassisSpeeds m_lastChassisSpeeds = new ChassisSpeeds();
   private static final double LOOP_PERIOD = 0.02; // 20ms standard FRC loop time
 
+  // Debug Y-shot dashboard tuning (only used by Y button command)
+  private static final String kDebugYShotRpmKey = "Debug/YShot/RPM";
+  private static final String kDebugYShotHoodDegKey = "Debug/YShot/HoodAngleDeg";
+  private static final String kDebugYShotAppliedRpmKey = "Debug/YShot/AppliedRPM";
+  private static final String kDebugYShotAppliedHoodDegKey = "Debug/YShot/AppliedHoodDeg";
+  private static final String kDebugYShotReadyToFeedKey = "Debug/YShot/ReadyToFeed";
+  private static final double kDebugYShotDefaultRpm = 3000.0;
+  private static final double kDebugYShotDefaultHoodDeg = 30.0;
+
   public RobotContainer() {
     // Connect swerve context to superstructure (with acceleration supplier)
     m_superstructure.setDriveContext(
@@ -53,7 +63,13 @@ public class RobotContainer {
         m_swerve::getChassisSpeeds,
         this::calculateAcceleration);
 
+    initDebugYShotDashboard();
     configureBindings();
+  }
+
+  private void initDebugYShotDashboard() {
+    SmartDashboard.putNumber(kDebugYShotRpmKey, kDebugYShotDefaultRpm);
+    SmartDashboard.putNumber(kDebugYShotHoodDegKey, kDebugYShotDefaultHoodDeg);
   }
 
   /**
@@ -130,18 +146,33 @@ public class RobotContainer {
     // A: Debug - Run hopper while held
     m_driverController.a().whileTrue(m_superstructure.getHopper().runCommand());
 
-    // Y: Debug - Spin up shooter + feed hopper while held
+    // Y: Debug - Spin up shooter + set hood from dashboard + feed hopper while held
     m_driverController.y().whileTrue(
-        Commands.startEnd(
+        Commands.runEnd(
             () -> {
-              m_superstructure.getShooter().setFlywheelSpeed(50.0); // ~3000 RPM
-              m_superstructure.getShooter().setFiring(true);
-              m_superstructure.getHopper().run();
+              double rpm = Math.max(0.0, SmartDashboard.getNumber(kDebugYShotRpmKey, kDebugYShotDefaultRpm));
+              double hoodDeg = SmartDashboard.getNumber(kDebugYShotHoodDegKey, kDebugYShotDefaultHoodDeg);
+              double clampedHoodDeg = Math.max(
+                  ShooterConstants.kMinHoodAngle.in(Degrees),
+                  Math.min(ShooterConstants.kMaxHoodAngle.in(Degrees), hoodDeg));
+              double targetRps = rpm / 60.0;
+
+              m_superstructure.getShooter().setFlywheelSpeed(targetRps);
+              m_superstructure.getShooter().setHoodAngle(
+                  ShooterConstants.launchRadToMechanismRotations(Math.toRadians(clampedHoodDeg)));
+              boolean readyToFeed = m_superstructure.getShooter().isAtSetpoint();
+              m_superstructure.getShooter().setFiring(readyToFeed);
+              m_superstructure.getHopper().setRunning(readyToFeed);
+
+              SmartDashboard.putNumber(kDebugYShotAppliedRpmKey, rpm);
+              SmartDashboard.putNumber(kDebugYShotAppliedHoodDegKey, clampedHoodDeg);
+              SmartDashboard.putBoolean(kDebugYShotReadyToFeedKey, readyToFeed);
             },
             () -> {
               m_superstructure.getShooter().setFlywheelSpeed(0);
               m_superstructure.getShooter().setFiring(false);
               m_superstructure.getHopper().stop();
+              SmartDashboard.putBoolean(kDebugYShotReadyToFeedKey, false);
             }));
 
     // ==================== DEFAULT COMMANDS ====================

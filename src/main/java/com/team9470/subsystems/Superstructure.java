@@ -121,10 +121,7 @@ public class Superstructure extends SubsystemBase {
             hopper.setRunning(canFire);
 
             // Telemetry
-            SmartDashboard.putBoolean("Superstructure/Aligned", isAligned);
-            SmartDashboard.putBoolean("Superstructure/CanFire", canFire);
-            SmartDashboard.putNumber("Superstructure/RotError", Math.toDegrees(rotError));
-            SmartDashboard.putNumber("Superstructure/RotCmd", rotCmd);
+            publishTelemetry(isAligned, canFire, rotCmd, rotError);
 
         }, this).finallyDo(() -> {
             shooter.setFiring(false);
@@ -167,15 +164,16 @@ public class Superstructure extends SubsystemBase {
             var result = getAimResult();
             shooter.setSetpoint(result.solution());
             boolean canFire = result.isAligned() && result.solution().isValid() && shooter.isAtSetpoint();
+            double rotError = result.solution().targetRobotYaw()
+                    .minus(poseSupplier.get().getRotation())
+                    .getRadians();
 
             // Control shooter and hopper based on alignment
             shooter.setFiring(canFire);
             hopper.setRunning(canFire);
 
             // Telemetry
-            SmartDashboard.putBoolean("Superstructure/Aligned", result.isAligned());
-            SmartDashboard.putBoolean("Superstructure/CanFire", canFire);
-            SmartDashboard.putNumber("Superstructure/RotCmd", result.rotationCommand());
+            publishTelemetry(result.isAligned(), canFire, result.rotationCommand(), rotError);
 
         }, this).finallyDo(() -> {
             shooter.setFiring(false);
@@ -205,5 +203,12 @@ public class Superstructure extends SubsystemBase {
 
     public Hopper getHopper() {
         return hopper;
+    }
+
+    private void publishTelemetry(boolean isAligned, boolean canFire, double rotCmd, double rotErrorRad) {
+        SmartDashboard.putBoolean("Superstructure/Aligned", isAligned);
+        SmartDashboard.putBoolean("Superstructure/CanFire", canFire);
+        SmartDashboard.putNumber("Superstructure/RotCmd", rotCmd);
+        SmartDashboard.putNumber("Superstructure/RotError", Math.toDegrees(rotErrorRad));
     }
 }

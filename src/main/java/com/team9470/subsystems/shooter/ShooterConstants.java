@@ -23,7 +23,7 @@ public class ShooterConstants {
         // 9 lb*in^2 = 9 * 0.0002926397 ~= 0.002634 kg*m^2
         public static final MomentOfInertia kFlywheelMOI = KilogramSquareMeters.of(0.002634);
 
-        public static final double kHoodGearRatio = 19.0; // 2:1 stage × 9.5:1 (10t pinion → 95t gear)
+        public static final double kHoodGearRatio = 38.0; // 2:1 stage × 9.5:1 (10t pinion → 95t gear)
         public static final MomentOfInertia kHoodMOI = KilogramSquareMeters.of(0.05);
         public static final Distance kHoodLength = Meters.of(0.2);
         public static final Mass kHoodMass = Kilograms.of(2.0);
@@ -32,21 +32,20 @@ public class ShooterConstants {
         public static final double kFlywheelSupplyCurrentLimit = 40.0;
         public static final double kHoodSupplyCurrentLimit = 25.0;
 
-        // Hood surface angle limits (angle of hood surface from horizontal)
-        // 0° = horizontal, 90° = vertical
-        public static final Angle kMinHoodAngle = Degrees.of(15.0); // most tilted back (steepest shot)
-        public static final Angle kMaxHoodAngle = Degrees.of(45.0); // most upright (flattest shot)
+        // Hood launch-angle limits (projectile pitch from horizontal).
+        public static final Angle kMinHoodAngle = Degrees.of(15.0); // flattest shot
+        public static final Angle kMaxHoodAngle = Degrees.of(45.0); // steepest shot
 
         // Field Geometry
         public static final Distance kShooterOffsetX = Meters.of(0.2); // Forward from robot center
         public static final Distance kShooterOffsetZ = Meters.of(0.5); // Up from center
 
         // ==================== HOMING ====================
-        // Hood homes to hardstop at minimum surface angle
-        public static final double kHoodHomingVoltage = -2.0; // Toward min surface angle
+        // Hood homes to hardstop at minimum launch angle.
+        public static final double kHoodHomingVoltage = -2.0; // Toward min launch angle
         public static final double kHoodStallCurrentThreshold = 20.0; // Amps
         public static final double kHoodStallTimeThreshold = 0.1; // Seconds at stall
-        public static final Angle kHoodHomePosition = Degrees.of(14.0); // Surface angle at hardstop
+        public static final Angle kHoodHomePosition = Degrees.of(14.0); // Launch angle at hardstop
 
         // Motor Configs
         public static final TalonFXConfiguration kFlywheelConfig = new TalonFXConfiguration();
@@ -56,27 +55,13 @@ public class ShooterConstants {
         // -------------------- Unit / Gear Conversion Helpers --------------------
         // Keep all gear-ratio math here to avoid duplicated scaling in subsystems.
 
-        /**
-         * Convert surface angle (rad) to launch angle (rad). Launch = π/2 - surface.
-         */
-        public static double surfaceToLaunchRad(double surfaceRad) {
-                return (Math.PI / 2.0) - surfaceRad;
+        /** Convert launch angle (radians) to mechanism rotations. */
+        public static double launchRadToMechanismRotations(double launchRad) {
+                return Units.radiansToRotations(launchRad);
         }
 
-        /**
-         * Convert launch angle (rad) to surface angle (rad). Surface = π/2 - launch.
-         */
-        public static double launchToSurfaceRad(double launchRad) {
-                return (Math.PI / 2.0) - launchRad;
-        }
-
-        /** Convert surface angle (radians) to mechanism rotations. */
-        public static double surfaceRadToMechanismRotations(double surfaceRad) {
-                return Units.radiansToRotations(surfaceRad);
-        }
-
-        /** Convert mechanism rotations to surface angle (radians). */
-        public static double mechanismRotationsToSurfaceRad(double mechanismRotations) {
+        /** Convert mechanism rotations to launch angle (radians). */
+        public static double mechanismRotationsToLaunchRad(double mechanismRotations) {
                 return Units.rotationsToRadians(mechanismRotations);
         }
 
@@ -85,7 +70,11 @@ public class ShooterConstants {
                 kFlywheelConfig.Slot0.kP = 0.25;
                 kFlywheelConfig.Slot0.kI = 0.0;
                 kFlywheelConfig.Slot0.kD = 0.01;
-                kFlywheelConfig.Slot0.kV = 0.125;
+                // Velocity loop is in mechanism units (SensorToMechanismRatio is set),
+                // so kV must be volts per mechanism RPS (not motor RPS).
+                // With 3:2 motor:wheel ratio and ~6000 RPM motor free speed:
+                // mechanism free speed ~= 100 / 1.5 = 66.7 RPS -> kV ~= 12 / 66.7 = 0.18.
+                kFlywheelConfig.Slot0.kV = 0.1875;
                 kFlywheelConfig.Slot0.kS = 0.0;
                 kFlywheelConfig.MotorOutput.NeutralMode = NeutralModeValue.Coast;
                 kFlywheelConfig.MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive;
@@ -98,7 +87,7 @@ public class ShooterConstants {
                 kFlywheelInvertedConfig.Slot0.kP = 0.25;
                 kFlywheelInvertedConfig.Slot0.kI = 0.0;
                 kFlywheelInvertedConfig.Slot0.kD = 0.01;
-                kFlywheelInvertedConfig.Slot0.kV = 0.125;
+                kFlywheelInvertedConfig.Slot0.kV = 0.1875;
                 kFlywheelInvertedConfig.Slot0.kS = 0.0;
                 kFlywheelInvertedConfig.MotorOutput.NeutralMode = NeutralModeValue.Coast;
                 kFlywheelInvertedConfig.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;

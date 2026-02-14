@@ -46,12 +46,12 @@ public class VisionPoseAcceptor {
 				// FIELD_BORDER_MARGIN) {
 				|| visionFieldToVehicle.getTranslation().getY() > aprilTagFieldLayout.getFieldWidth()
 						+ FIELD_BORDER_MARGIN) {
-			SmartDashboard.putString("Vision validation", "Outside field");
+			SmartDashboard.putString("Vision/Validation", "Outside field");
 			return false;
 		}
 
 		if (Math.hypot(robotVelocity.dx, robotVelocity.dx) > 4.0) {
-			SmartDashboard.putString("Vision validation", "Max velocity");
+			SmartDashboard.putString("Vision/Validation", "Max velocity");
 			return false;
 		}
 
@@ -59,12 +59,12 @@ public class VisionPoseAcceptor {
 			// Check max correction
 			if (visionFieldToVehicle.getTranslation()
 					.getDistance(lastFieldToVehicle.getTranslation()) > MAX_VISION_CORRECTION) {
-				SmartDashboard.putString("Vision validation", "Max correction");
+				SmartDashboard.putString("Vision/Validation", "Max correction");
 				return false;
 			}
 		}
 
-		SmartDashboard.putString("Vision validation", "OK");
+		SmartDashboard.putString("Vision/Validation", "OK");
 		return true;
 	}
 }

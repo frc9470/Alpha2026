@@ -83,7 +83,7 @@ public class Vision extends SubsystemBase {
 
     @Override
     public void periodic() {
-        SmartDashboard.putNumber("Vision/heartbeat", count);
+        SmartDashboard.putNumber("Vision/Heartbeat", count);
         count++;
         devices.forEach(visionDevice -> visionDevice.updatePosition(Swerve.getInstance()));
     }

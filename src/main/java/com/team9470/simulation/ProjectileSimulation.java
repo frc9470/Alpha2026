@@ -152,11 +152,9 @@ public class ProjectileSimulation {
     }
 
     private boolean isHoodAtSetpoint(double targetHoodRot) {
-        // Sim uses launch angle; convert to surface angle mechanism rotations for
-        // comparison
+        // Sim uses launch angle; convert to mechanism rotations for comparison.
         double launchRad = hoodSim.getAngleRads();
-        double surfaceRad = ShooterConstants.launchToSurfaceRad(launchRad);
-        double currentHoodRot = ShooterConstants.surfaceRadToMechanismRotations(surfaceRad);
+        double currentHoodRot = ShooterConstants.launchRadToMechanismRotations(launchRad);
         return Math.abs(currentHoodRot - targetHoodRot) < 0.01;
     }
 

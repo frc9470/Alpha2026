@@ -9,6 +9,7 @@ import com.team254.lib.drivers.TalonUtil;
 import com.team9470.Ports;
 import com.team9470.Robot;
 import com.team9470.simulation.IntakeSimulation;
+import com.team9470.util.TelemetryUtil;
 
 import edu.wpi.first.networktables.BooleanPublisher;
 import edu.wpi.first.networktables.DoublePublisher;
@@ -59,29 +60,19 @@ public class Intake extends SubsystemBase {
     private final StringPublisher ntState = nt.getStringTopic("State").publish();
 
     // Pivot position (degrees)
-    private final DoublePublisher ntGoalDeg = makeDegPublisher("Pivot/GoalDeg");
-    private final DoublePublisher ntSetpointDeg = makeDegPublisher("Pivot/SetpointDeg");
-    private final DoublePublisher ntPositionDeg = makeDegPublisher("Pivot/PositionDeg");
-    private final DoublePublisher ntErrorDeg = makeDegPublisher("Pivot/ErrorDeg");
+    private final DoublePublisher ntGoalDeg = TelemetryUtil.publishDouble(nt, "Pivot/GoalDeg", "deg");
+    private final DoublePublisher ntSetpointDeg = TelemetryUtil.publishDouble(nt, "Pivot/SetpointDeg", "deg");
+    private final DoublePublisher ntPositionDeg = TelemetryUtil.publishDouble(nt, "Pivot/PositionDeg", "deg");
+    private final DoublePublisher ntErrorDeg = TelemetryUtil.publishDouble(nt, "Pivot/ErrorDeg", "deg");
 
     // Pivot motor signals
-    private final DoublePublisher ntPivotVelocity = makePublisher("Pivot/VelocityDegPerSec", "deg/s");
-    private final DoublePublisher ntPivotCurrent = makePublisher("Pivot/SupplyCurrentAmps", "A");
-    private final DoublePublisher ntPivotVoltage = makePublisher("Pivot/AppliedVolts", "V");
+    private final DoublePublisher ntPivotVelocity = TelemetryUtil.publishDouble(nt, "Pivot/VelocityDegPerSec", "deg/s");
+    private final DoublePublisher ntPivotCurrent = TelemetryUtil.publishDouble(nt, "Pivot/SupplyCurrentAmps", "A");
+    private final DoublePublisher ntPivotVoltage = TelemetryUtil.publishDouble(nt, "Pivot/AppliedVolts", "V");
 
     // Roller signals
-    private final DoublePublisher ntRollerVoltage = makePublisher("Roller/AppliedVolts", "V");
-    private final DoublePublisher ntRollerCurrent = makePublisher("Roller/SupplyCurrentAmps", "A");
-
-    private DoublePublisher makeDegPublisher(String name) {
-        return makePublisher(name, "deg");
-    }
-
-    private DoublePublisher makePublisher(String name, String unit) {
-        var topic = nt.getDoubleTopic(name);
-        topic.setProperty("unit", "\"" + unit + "\"");
-        return topic.publish();
-    }
+    private final DoublePublisher ntRollerVoltage = TelemetryUtil.publishDouble(nt, "Roller/AppliedVolts", "V");
+    private final DoublePublisher ntRollerCurrent = TelemetryUtil.publishDouble(nt, "Roller/SupplyCurrentAmps", "A");
 
     private Intake() {
         // Apply configurations
