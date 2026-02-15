@@ -17,7 +17,7 @@ public class ShooterConstants {
 
         // Physical Constants
         public static final double kFlywheelGearRatio = 1.5;
-        public static final double kFlywheelEfficiency = 0.8;
+        public static final double kFlywheelEfficiency = 0.6;
         public static final double kMaxMotorSpeed = 100.0; // RPS (~6000 RPM Kraken)
 
         // 9 lb*in^2 = 9 * 0.0002926397 ~= 0.002634 kg*m^2
@@ -29,7 +29,7 @@ public class ShooterConstants {
         public static final Mass kHoodMass = Kilograms.of(2.0);
 
         // Current Limits
-        public static final double kFlywheelSupplyCurrentLimit = 40.0;
+        public static final double kFlywheelStatorCurrentLimit = 60.0;
         public static final double kHoodSupplyCurrentLimit = 25.0;
 
         // Hood launch-angle limits (projectile pitch from horizontal).
@@ -67,7 +67,7 @@ public class ShooterConstants {
 
         static {
                 // Flywheel Config
-                kFlywheelConfig.Slot0.kP = 0.25;
+                kFlywheelConfig.Slot0.kP = .25;
                 kFlywheelConfig.Slot0.kI = 0.0;
                 kFlywheelConfig.Slot0.kD = 0.01;
                 // Velocity loop is in mechanism units (SensorToMechanismRatio is set),
@@ -80,11 +80,11 @@ public class ShooterConstants {
                 kFlywheelConfig.MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive;
                 kFlywheelConfig.Feedback.SensorToMechanismRatio = kFlywheelGearRatio;
                 kFlywheelConfig.CurrentLimits
-                                .withSupplyCurrentLimit(kFlywheelSupplyCurrentLimit)
-                                .withSupplyCurrentLimitEnable(true);
+                                .withStatorCurrentLimit(kFlywheelStatorCurrentLimit)
+                                .withStatorCurrentLimitEnable(true);
 
                 // Flywheel Inverted Config (motors 2 & 4)
-                kFlywheelInvertedConfig.Slot0.kP = 0.25;
+                kFlywheelInvertedConfig.Slot0.kP = .25;
                 kFlywheelInvertedConfig.Slot0.kI = 0.0;
                 kFlywheelInvertedConfig.Slot0.kD = 0.01;
                 kFlywheelInvertedConfig.Slot0.kV = 0.1875;
@@ -93,8 +93,8 @@ public class ShooterConstants {
                 kFlywheelInvertedConfig.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
                 kFlywheelInvertedConfig.Feedback.SensorToMechanismRatio = kFlywheelGearRatio;
                 kFlywheelInvertedConfig.CurrentLimits
-                                .withSupplyCurrentLimit(kFlywheelSupplyCurrentLimit)
-                                .withSupplyCurrentLimitEnable(true);
+                                .withStatorCurrentLimit(kFlywheelStatorCurrentLimit)
+                                .withStatorCurrentLimitEnable(true);
 
                 // Hood Config
                 kHoodConfig.Slot0.kP = 40.0;

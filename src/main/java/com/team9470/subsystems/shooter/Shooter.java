@@ -134,15 +134,11 @@ public class Shooter extends SubsystemBase {
      * Set target shooting solution from AutoAim.
      */
     public void setSetpoint(ShootingSolution solution) {
-        // Convert solution to motor setpoints
-        // Exit velocity -> Flywheel RPS
-        double exitSpeed = solution.speed();
-        double wheelRadius = Units.inchesToMeters(2.0);
-        double efficiency = ShooterConstants.kFlywheelEfficiency;
-        this.targetSpeedRPS = exitSpeed / (efficiency * 2.0 * Math.PI * wheelRadius);
+        // Flywheel uses direct map RPM command.
+        this.targetSpeedRPS = solution.flywheelRpm() / 60.0;
 
-        // Pitch angle (launch) -> Hood mechanism rotations
-        double launchRad = solution.pitch().getRadians();
+        // Hood map uses commanded hood plane angle in degrees.
+        double launchRad = Math.toRadians(solution.hoodCommandDeg());
         this.targetHoodAngleRotations = clampHoodRotations(
                 ShooterConstants.launchRadToMechanismRotations(launchRad));
     }

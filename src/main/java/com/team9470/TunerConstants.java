@@ -60,23 +60,16 @@ public class TunerConstants {
         private static final SwerveModuleConstants.SteerFeedbackType kSteerFeedbackType = SwerveModuleConstants.SteerFeedbackType.FusedCANcoder;
         // The stator current at which the wheels start to slip;
         // This needs to be tuned to your individual robot
-        private static final Current kSlipCurrent = Amps.of(120);
-        // Keep drive/steer limits explicit to avoid brownouts while preserving traction.
-        private static final Current kDriveSupplyCurrentLimit = Amps.of(50);
-        private static final Current kDriveStatorCurrentLimit = Amps.of(60);
+        private static final Current kSlipCurrent = Amps.of(60);
+        // Keep drive/steer limits explicit to avoid brownouts while preserving
+        // traction.
         private static final Current kSteerSupplyCurrentLimit = Amps.of(20);
         private static final Current kSteerStatorCurrentLimit = Amps.of(25);
         // Initial configs for the drive and steer motors and the azimuth encoder; these
         // cannot be null.
         // Some configs will be overwritten; check the `with*InitialConfigs()` API
         // documentation.
-        private static final TalonFXConfiguration driveInitialConfigs = new TalonFXConfiguration()
-                        .withCurrentLimits(
-                                        new CurrentLimitsConfigs()
-                                                        .withSupplyCurrentLimit(kDriveSupplyCurrentLimit)
-                                                        .withSupplyCurrentLimitEnable(true)
-                                                        .withStatorCurrentLimit(kDriveStatorCurrentLimit)
-                                                        .withStatorCurrentLimitEnable(true));
+        private static final TalonFXConfiguration driveInitialConfigs = new TalonFXConfiguration();
         private static final TalonFXConfiguration steerInitialConfigs = new TalonFXConfiguration()
                         .withCurrentLimits(
                                         new CurrentLimitsConfigs()
@@ -223,7 +216,7 @@ public class TunerConstants {
          */
         public static Swerve createDrivetrain() {
                 return new Swerve(DrivetrainConstants,
-                                80, odometryStandardDeviation, visionStandardDeviation,
+                                200, odometryStandardDeviation, visionStandardDeviation,
                                 FrontLeft, FrontRight, BackLeft, BackRight);
 
         }

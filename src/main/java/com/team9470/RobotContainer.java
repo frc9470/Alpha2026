@@ -7,7 +7,6 @@ package com.team9470;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-import edu.wpi.first.math.kinematics.ChassisSpeeds;
 
 import com.team9470.subsystems.swerve.Swerve;
 import com.team9470.subsystems.Superstructure;
@@ -43,13 +42,11 @@ public class RobotContainer {
   private final CommandXboxController m_driverController = new CommandXboxController(
       OperatorConstants.kDriverControllerPort);
 
-  // Acceleration Tracking for Predictive Shooting
-  private ChassisSpeeds m_lastChassisSpeeds = new ChassisSpeeds();
-  private static final double LOOP_PERIOD = 0.02; // 20ms standard FRC loop time
-
   // Debug Y-shot dashboard tuning (only used by Y button command)
   private static final String kDebugYShotRpmKey = "Debug/YShot/RPM";
   private static final String kDebugYShotHoodDegKey = "Debug/YShot/HoodAngleDeg";
+  private static final String kDebugYShotRequestedRpmKey = "Debug/YShot/RequestedRPM";
+  private static final String kDebugYShotRequestedHoodDegKey = "Debug/YShot/RequestedHoodDeg";
   private static final String kDebugYShotAppliedRpmKey = "Debug/YShot/AppliedRPM";
   private static final String kDebugYShotAppliedHoodDegKey = "Debug/YShot/AppliedHoodDeg";
   private static final String kDebugYShotReadyToFeedKey = "Debug/YShot/ReadyToFeed";
@@ -57,11 +54,10 @@ public class RobotContainer {
   private static final double kDebugYShotDefaultHoodDeg = 30.0;
 
   public RobotContainer() {
-    // Connect swerve context to superstructure (with acceleration supplier)
+    // Connect swerve context to superstructure
     m_superstructure.setDriveContext(
         m_swerve::getPose,
-        m_swerve::getChassisSpeeds,
-        this::calculateAcceleration);
+        m_swerve::getChassisSpeeds);
 
     initDebugYShotDashboard();
     configureBindings();
@@ -70,19 +66,8 @@ public class RobotContainer {
   private void initDebugYShotDashboard() {
     SmartDashboard.putNumber(kDebugYShotRpmKey, kDebugYShotDefaultRpm);
     SmartDashboard.putNumber(kDebugYShotHoodDegKey, kDebugYShotDefaultHoodDeg);
-  }
-
-  /**
-   * Calculate chassis acceleration for predictive shooting.
-   */
-  private ChassisSpeeds calculateAcceleration() {
-    ChassisSpeeds currentSpeeds = m_swerve.getChassisSpeeds();
-    ChassisSpeeds acceleration = new ChassisSpeeds(
-        (currentSpeeds.vxMetersPerSecond - m_lastChassisSpeeds.vxMetersPerSecond) / LOOP_PERIOD,
-        (currentSpeeds.vyMetersPerSecond - m_lastChassisSpeeds.vyMetersPerSecond) / LOOP_PERIOD,
-        (currentSpeeds.omegaRadiansPerSecond - m_lastChassisSpeeds.omegaRadiansPerSecond) / LOOP_PERIOD);
-    m_lastChassisSpeeds = currentSpeeds;
-    return acceleration;
+    SmartDashboard.putNumber(kDebugYShotRequestedRpmKey, kDebugYShotDefaultRpm);
+    SmartDashboard.putNumber(kDebugYShotRequestedHoodDegKey, kDebugYShotDefaultHoodDeg);
   }
 
   private final SwerveRequest.SwerveDriveBrake xLock = new SwerveRequest.SwerveDriveBrake();
@@ -150,8 +135,10 @@ public class RobotContainer {
     m_driverController.y().whileTrue(
         Commands.runEnd(
             () -> {
-              double rpm = Math.max(0.0, SmartDashboard.getNumber(kDebugYShotRpmKey, kDebugYShotDefaultRpm));
-              double hoodDeg = SmartDashboard.getNumber(kDebugYShotHoodDegKey, kDebugYShotDefaultHoodDeg);
+              double requestedRpm = SmartDashboard.getNumber(kDebugYShotRpmKey, kDebugYShotDefaultRpm);
+              double requestedHoodDeg = SmartDashboard.getNumber(kDebugYShotHoodDegKey, kDebugYShotDefaultHoodDeg);
+              double rpm = Math.max(0.0, requestedRpm);
+              double hoodDeg = requestedHoodDeg;
               double clampedHoodDeg = Math.max(
                   ShooterConstants.kMinHoodAngle.in(Degrees),
                   Math.min(ShooterConstants.kMaxHoodAngle.in(Degrees), hoodDeg));
@@ -164,6 +151,8 @@ public class RobotContainer {
               m_superstructure.getShooter().setFiring(readyToFeed);
               m_superstructure.getHopper().setRunning(readyToFeed);
 
+              SmartDashboard.putNumber(kDebugYShotRequestedRpmKey, requestedRpm);
+              SmartDashboard.putNumber(kDebugYShotRequestedHoodDegKey, requestedHoodDeg);
               SmartDashboard.putNumber(kDebugYShotAppliedRpmKey, rpm);
               SmartDashboard.putNumber(kDebugYShotAppliedHoodDegKey, clampedHoodDeg);
               SmartDashboard.putBoolean(kDebugYShotReadyToFeedKey, readyToFeed);
