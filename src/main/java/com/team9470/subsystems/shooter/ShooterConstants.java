@@ -29,7 +29,7 @@ public class ShooterConstants {
         public static final Mass kHoodMass = Kilograms.of(2.0);
 
         // Current Limits
-        public static final double kFlywheelStatorCurrentLimit = 60.0;
+        public static final double kFlywheelStatorCurrentLimit = 40.0;
         public static final double kHoodSupplyCurrentLimit = 25.0;
 
         // Hood launch-angle limits (projectile pitch from horizontal).
@@ -67,14 +67,14 @@ public class ShooterConstants {
 
         static {
                 // Flywheel Config
-                kFlywheelConfig.Slot0.kP = .25;
+                kFlywheelConfig.Slot0.kP = .1;
                 kFlywheelConfig.Slot0.kI = 0.0;
                 kFlywheelConfig.Slot0.kD = 0.01;
                 // Velocity loop is in mechanism units (SensorToMechanismRatio is set),
                 // so kV must be volts per mechanism RPS (not motor RPS).
                 // With 3:2 motor:wheel ratio and ~6000 RPM motor free speed:
                 // mechanism free speed ~= 100 / 1.5 = 66.7 RPS -> kV ~= 12 / 66.7 = 0.18.
-                kFlywheelConfig.Slot0.kV = 0.1875;
+                kFlywheelConfig.Slot0.kV = 0.182;
                 kFlywheelConfig.Slot0.kS = 0.0;
                 kFlywheelConfig.MotorOutput.NeutralMode = NeutralModeValue.Coast;
                 kFlywheelConfig.MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive;
@@ -84,10 +84,10 @@ public class ShooterConstants {
                                 .withStatorCurrentLimitEnable(true);
 
                 // Flywheel Inverted Config (motors 2 & 4)
-                kFlywheelInvertedConfig.Slot0.kP = .25;
+                kFlywheelInvertedConfig.Slot0.kP = .1;
                 kFlywheelInvertedConfig.Slot0.kI = 0.0;
                 kFlywheelInvertedConfig.Slot0.kD = 0.01;
-                kFlywheelInvertedConfig.Slot0.kV = 0.1875;
+                kFlywheelInvertedConfig.Slot0.kV = 0.182;
                 kFlywheelInvertedConfig.Slot0.kS = 0.0;
                 kFlywheelInvertedConfig.MotorOutput.NeutralMode = NeutralModeValue.Coast;
                 kFlywheelInvertedConfig.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;

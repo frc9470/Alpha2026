@@ -9,20 +9,32 @@ public final class ShooterInterpolationMaps {
     private ShooterInterpolationMaps() {
     }
 
-    private static final InterpolatingTreeMap<InterpolatingDouble, ShotParameter> kSpeakerMap = new InterpolatingTreeMap<>();
+    private static final InterpolatingTreeMap<InterpolatingDouble, ShotParameter> kHubMap = new InterpolatingTreeMap<>();
 
     static {
         // Intentionally empty. Add tuned (distance meters -> hoodDeg, rpm) points here.
         // Example:
-        // addSpeakerPoint(2.5, 27.0, 3200.0);
+        // addHubPoint(2.5, 27.0, 3200.0);
+
+        addHubPoint(1.0, 15.0, 1850.0);// center doesn't work
+        addHubPoint(1.25, 18.0, 1750.0);
+        addHubPoint(1.5, 17.0, 1800.0);
+        addHubPoint(1.75, 17.0, 1900.0);
+        addHubPoint(2.0, 20.0, 1950.0);
+        addHubPoint(3, 31.0, 2070.0);
+        addHubPoint(3.5, 33.0, 2190.0);
+        addHubPoint(4.0, 34.0, 2300.0);
+        addHubPoint(4.5, 34.0, 2530.0);
+        addHubPoint(5.0, 37.0, 2780.0);
+
     }
 
-    public static Optional<ShotParameter> getSpeaker(double distanceMeters) {
-        ShotParameter parameter = kSpeakerMap.getInterpolated(new InterpolatingDouble(distanceMeters));
+    public static Optional<ShotParameter> getHub(double distanceMeters) {
+        ShotParameter parameter = kHubMap.getInterpolated(new InterpolatingDouble(distanceMeters));
         return Optional.ofNullable(parameter);
     }
 
-    public static void addSpeakerPoint(double distanceMeters, double hoodCommandDeg, double flywheelRpm) {
-        kSpeakerMap.put(new InterpolatingDouble(distanceMeters), new ShotParameter(hoodCommandDeg, flywheelRpm));
+    public static void addHubPoint(double distanceMeters, double hoodCommandDeg, double flywheelRpm) {
+        kHubMap.put(new InterpolatingDouble(distanceMeters), new ShotParameter(hoodCommandDeg, flywheelRpm));
     }
 }

@@ -64,7 +64,7 @@ public class AutoAim {
         Translation2d shooterExitXY = robotPose.getTranslation().plus(shooterOffsetXY);
 
         double distanceMeters = shooterExitXY.getDistance(targetXY);
-        Optional<ShotParameter> shotParameter = ShooterInterpolationMaps.getSpeaker(distanceMeters);
+        Optional<ShotParameter> shotParameter = ShooterInterpolationMaps.getHub(distanceMeters);
         publishMapTelemetry(distanceMeters, shotParameter.orElse(null));
 
         double dx = targetXY.getX() - robotPose.getX();

@@ -83,8 +83,10 @@ public class Shooter extends SubsystemBase {
     private final DoublePublisher ntFlywheelCurrentRPS = TelemetryUtil.publishDouble(nt, "Flywheel/CurrentRPS", "rps");
     private final DoublePublisher ntFlywheelErrorRPS = TelemetryUtil.publishDouble(nt, "Flywheel/ErrorRPS", "rps");
     private final DoublePublisher ntFlywheelVoltage = TelemetryUtil.publishDouble(nt, "Flywheel/AppliedVolts", "V");
-    private final DoublePublisher ntFlywheelSupplyCurrent = TelemetryUtil.publishDouble(nt, "Flywheel/SupplyCurrentAmps", "A");
-    private final DoublePublisher ntFlywheelStatorCurrent = TelemetryUtil.publishDouble(nt, "Flywheel/StatorCurrentAmps",
+    private final DoublePublisher ntFlywheelSupplyCurrent = TelemetryUtil.publishDouble(nt,
+            "Flywheel/SupplyCurrentAmps", "A");
+    private final DoublePublisher ntFlywheelStatorCurrent = TelemetryUtil.publishDouble(nt,
+            "Flywheel/StatorCurrentAmps",
             "A");
     private final DoublePublisher ntSimMeasuredBPS = TelemetryUtil.publishDouble(nt, "Sim/MeasuredBPS", "bps");
 
@@ -186,7 +188,7 @@ public class Shooter extends SubsystemBase {
         double currentHoodRot = getCurrentHoodRotations();
         double hoodError = Math.abs(currentHoodRot - targetHoodAngleRotations);
 
-        boolean flywheelReady = rpsError < 0.5;
+        boolean flywheelReady = rpsError < 1; // 60 RPM
         boolean hoodReady = hoodError < 0.01; // ~3.6 degrees
 
         return flywheelReady && hoodReady;
