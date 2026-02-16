@@ -4,6 +4,8 @@
 
 package com.team9470;
 
+import choreo.auto.AutoChooser;
+import com.team9470.commands.Autos;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -37,6 +39,8 @@ public class RobotContainer {
   private final Swerve m_swerve = Swerve.getInstance();
   private final Superstructure m_superstructure = Superstructure.getInstance();
   private final Vision m_vision = Vision.getInstance();
+  private final Autos m_autos = new Autos(m_swerve);
+  private final AutoChooser m_autoChooser = new AutoChooser();
 
   // Controllers
   private final CommandXboxController m_driverController = new CommandXboxController(
@@ -61,6 +65,7 @@ public class RobotContainer {
 
     initDebugYShotDashboard();
     configureBindings();
+    configureAutonomous();
   }
 
   private void initDebugYShotDashboard() {
@@ -172,7 +177,14 @@ public class RobotContainer {
             .withRotationalRate(-m_driverController.getRightX() * MaxAngularRate)));
   }
 
+  private void configureAutonomous() {
+    m_autoChooser.addRoutine("Do Nothing", m_autos::doNothing);
+    m_autoChooser.addRoutine("NewPath", m_autos::newPath);
+    m_autoChooser.select("Do Nothing");
+    SmartDashboard.putData("AutoChooser", m_autoChooser);
+  }
+
   public Command getAutonomousCommand() {
-    return null;
+    return m_autoChooser.selectedCommandScheduler();
   }
 }
