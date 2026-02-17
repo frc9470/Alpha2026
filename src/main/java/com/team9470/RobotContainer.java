@@ -113,9 +113,6 @@ public class RobotContainer {
     // Left Bumper: Toggle intake deployed/retracted
     m_driverController.leftBumper().onTrue(m_superstructure.toggleIntakeCommand());
 
-    // Left Trigger: Intake agitation while held
-    m_driverController.leftTrigger().whileTrue(m_superstructure.agitateIntakeCommand());
-
     // Right Bumper: Outtake (reverse rollers while held)
     m_driverController.rightBumper().whileTrue(m_superstructure.outtakeCommand());
 
@@ -150,7 +147,8 @@ public class RobotContainer {
               m_superstructure.getShooter().setHoodAngle(
                   ShooterConstants.launchRadToMechanismRotations(Math.toRadians(clampedHoodDeg)));
               boolean shooterAtSetpoint = m_superstructure.getShooter().isAtSetpoint();
-              m_superstructure.getIntake().setShooting(true);
+              m_superstructure.getIntake().setShooting(false);
+              m_superstructure.getIntake().setAgitating(true);
               // Y debug should force-feed immediately instead of waiting for shooter readiness.
               m_superstructure.getShooter().setFiring(true);
               m_superstructure.getHopper().setRunning(true);
