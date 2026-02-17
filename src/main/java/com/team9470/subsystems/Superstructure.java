@@ -83,6 +83,22 @@ public class Superstructure extends SubsystemBase {
     }
 
     /**
+     * Toggle intake arm to deploy-high/retracted.
+     */
+    public Command toggleIntakeHighCommand() {
+        return intake.getDeployHighToggleCommand()
+                .withName("Superstructure Toggle Intake High");
+    }
+
+    /**
+     * Agitate intake while held.
+     */
+    public Command agitateIntakeCommand() {
+        return intake.getAgitateCommand()
+                .withName("Superstructure Agitate Intake");
+    }
+
+    /**
      * Outtake command - reverses rollers while held.
      */
     public Command outtakeCommand() {
@@ -98,7 +114,8 @@ public class Superstructure extends SubsystemBase {
         return Commands.run(() -> {
             var solution = AutoAim.calculate(poseSupplier.get(), speedsSupplier.get());
             shooter.setSetpoint(solution);
-            intake.setAgitating(true);
+            intake.setShooting(true);
+            intake.setAgitating(false);
             double rotError = solution.targetRobotYaw()
                     .minus(poseSupplier.get().getRotation())
                     .getRadians();
@@ -118,6 +135,7 @@ public class Superstructure extends SubsystemBase {
         }, this).finallyDo(() -> {
             shooter.stop();
             hopper.stop();
+            intake.setShooting(false);
             intake.setAgitating(false);
         }).withName("Superstructure Shoot");
     }
@@ -156,7 +174,8 @@ public class Superstructure extends SubsystemBase {
         return Commands.run(() -> {
             var result = getAimResult();
             shooter.setSetpoint(result.solution());
-            intake.setAgitating(true);
+            intake.setShooting(true);
+            intake.setAgitating(false);
             boolean canFire = result.isAligned() && result.solution().isValid() && shooter.isAtSetpoint();
             double rotError = result.solution().targetRobotYaw()
                     .minus(poseSupplier.get().getRotation())
@@ -172,6 +191,7 @@ public class Superstructure extends SubsystemBase {
         }, this).finallyDo(() -> {
             shooter.stop();
             hopper.stop();
+            intake.setShooting(false);
             intake.setAgitating(false);
         }).withName("Superstructure AimAndShoot");
     }
@@ -183,6 +203,7 @@ public class Superstructure extends SubsystemBase {
         return Commands.runOnce(() -> {
             shooter.stop();
             hopper.stop();
+            intake.setShooting(false);
             intake.setAgitating(false);
         }, this).withName("Superstructure Idle");
     }

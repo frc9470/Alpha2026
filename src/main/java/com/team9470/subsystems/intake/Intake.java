@@ -46,7 +46,9 @@ public class Intake extends SubsystemBase {
 
     // State
     private boolean deployed = false;
+    private boolean deployHigh = false;
     private boolean agitating = false;
+    private boolean shooting = false;
     private boolean needsHoming = true;
     private final TelemetryManager telemetry = TelemetryManager.getInstance();
 
@@ -55,6 +57,8 @@ public class Intake extends SubsystemBase {
     private static final int STATE_DEPLOYED = 2;
     private static final int STATE_AGITATE_DEPLOY = 3;
     private static final int STATE_AGITATE_MID = 4;
+    private static final int STATE_DEPLOYED_HIGH = 5;
+    private static final int STATE_SHOOTING_OVERRIDE = 6;
 
     private Intake() {
         // Apply configurations
@@ -68,16 +72,44 @@ public class Intake extends SubsystemBase {
 
     public void setDeployed(boolean deployed) {
         this.deployed = deployed;
+        if (deployed) {
+            this.deployHigh = false;
+        }
+    }
+
+    public void setDeployHigh(boolean deployHigh) {
+        this.deployHigh = deployHigh;
+        if (deployHigh) {
+            this.deployed = false;
+        }
     }
 
     public void setAgitating(boolean agitating) {
         this.agitating = agitating;
     }
 
+    public void setShooting(boolean shooting) {
+        this.shooting = shooting;
+    }
+
     /** Toggle deploy/retract arm position. */
     public Command getToggleCommand() {
         return this.runOnce(() -> setDeployed(!deployed))
                 .withName("Intake Toggle");
+    }
+
+    /** Toggle deploy-high/retract arm position. */
+    public Command getDeployHighToggleCommand() {
+        return this.runOnce(() -> setDeployHigh(!deployHigh))
+                .withName("Intake Toggle High");
+    }
+
+    /** Agitate between deploy and middle position while held. */
+    public Command getAgitateCommand() {
+        return this.startEnd(
+                () -> setAgitating(true),
+                () -> setAgitating(false))
+                .withName("Intake Agitate");
     }
 
     /** Deploy + run rollers while held, retract on release. */
@@ -114,7 +146,7 @@ public class Intake extends SubsystemBase {
 
             telemetry.publishIntakeState(new IntakeSnapshot(
                     true,
-                    deployed,
+                    deployed || deployHigh,
                     agitating,
                     STATE_HOMING,
                     0.0,
@@ -132,22 +164,30 @@ public class Intake extends SubsystemBase {
         // --- Normal operation ---
 
         // Pivot control
+        boolean effectiveAgitating = agitating && !shooting;
         boolean agitateAtDeploy = false;
-        if (agitating) {
+        if (effectiveAgitating) {
             double t = Timer.getFPGATimestamp();
             agitateAtDeploy = Math.sin(2.0 * Math.PI * IntakeConstants.kAgitateFrequencyHz * t) >= 0.0;
         }
         Angle targetAngle;
-        if (agitating) {
+        if (shooting) {
+            targetAngle = IntakeConstants.kRetractAngle;
+        } else if (effectiveAgitating) {
             targetAngle = agitateAtDeploy ? IntakeConstants.kDeployAngle : IntakeConstants.kAgitateMiddleAngle;
+        } else if (deployHigh) {
+            targetAngle = IntakeConstants.kDeployHighAngle;
+        } else if (deployed) {
+            targetAngle = IntakeConstants.kDeployAngle;
         } else {
-            targetAngle = deployed ? IntakeConstants.kDeployAngle : IntakeConstants.kRetractAngle;
+            targetAngle = IntakeConstants.kRetractAngle;
         }
         double targetRot = IntakeConstants.pivotAngleToMechanismRotations(targetAngle);
         pivot.setControl(mmRequest.withPosition(targetRot));
 
         // Roller control
-        double rollerVolts = (deployed || agitating) ? IntakeConstants.kRollerVoltage : 0.0;
+        double rollerVolts = shooting ? 0.0
+                : (deployed || deployHigh || effectiveAgitating) ? IntakeConstants.kRollerVoltage : 0.0;
         roller.setControl(voltRequest.withOutput(rollerVolts));
 
         // --- Telemetry ---
@@ -158,14 +198,20 @@ public class Intake extends SubsystemBase {
         double setpointRad = IntakeConstants.pivotMechanismRotationsToAngle(targetRot).in(Radians);
 
         int stateCode;
-        if (agitating) {
+        if (shooting) {
+            stateCode = STATE_SHOOTING_OVERRIDE;
+        } else if (effectiveAgitating) {
             stateCode = agitateAtDeploy ? STATE_AGITATE_DEPLOY : STATE_AGITATE_MID;
+        } else if (deployHigh) {
+            stateCode = STATE_DEPLOYED_HIGH;
+        } else if (deployed) {
+            stateCode = STATE_DEPLOYED;
         } else {
-            stateCode = deployed ? STATE_DEPLOYED : STATE_RETRACTED;
+            stateCode = STATE_RETRACTED;
         }
         telemetry.publishIntakeState(new IntakeSnapshot(
                 false,
-                deployed,
+                deployed || deployHigh,
                 agitating,
                 stateCode,
                 goalRad,
@@ -186,17 +232,21 @@ public class Intake extends SubsystemBase {
 
     @Override
     public void simulationPeriodic() {
-        IntakeSimulation.getInstance().update(pivot, roller, deployed || agitating);
+        IntakeSimulation.getInstance().update(pivot, roller, !shooting && (deployed || deployHigh || agitating));
     }
 
     // --- Accessors for physics ---
 
     public boolean isRunning() {
-        return deployed || agitating;
+        return !shooting && (deployed || deployHigh || agitating);
     }
 
     public boolean isDeployed() {
-        return deployed;
+        return deployed || deployHigh;
+    }
+
+    public boolean isDeployHigh() {
+        return deployHigh;
     }
 
     public boolean isAgitating() {

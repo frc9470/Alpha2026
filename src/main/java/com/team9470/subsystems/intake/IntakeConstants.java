@@ -15,6 +15,7 @@ public class IntakeConstants {
 
     // Setpoints
     public static final Angle kDeployAngle = Degrees.of(-35.0); // Down/Floor
+    public static final Angle kDeployHighAngle = Degrees.of(-25.0); // Deploy +10 deg
     public static final Angle kAgitateMiddleAngle = Degrees.of(45.0); // Mid position for shot agitation
     public static final Angle kRetractAngle = Degrees.of(90.0); // Up/Stowed
     public static final double kRollerVoltage = 8.0;
