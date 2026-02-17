@@ -3,6 +3,8 @@ package com.team9470.commands;
 import choreo.auto.AutoFactory;
 import choreo.auto.AutoRoutine;
 import choreo.auto.AutoTrajectory;
+
+import com.team9470.subsystems.Superstructure;
 import com.team9470.subsystems.shooter.Shooter;
 import com.team9470.subsystems.swerve.Swerve;
 import edu.wpi.first.wpilibj2.command.Commands;
@@ -30,6 +32,19 @@ public class Autos {
     routine.active().onTrue(
         newPath.resetOdometry()
             .andThen(newPath.cmd()));
+    return routine;
+  }
+
+  public AutoRoutine shoot8() {
+    AutoRoutine routine = m_autoFactory.newRoutine("Shoot8");
+    AutoTrajectory moveToCenter = routine.trajectory("moveToCenter");
+
+    routine.active().onTrue(
+        moveToCenter.resetOdometry()
+            .andThen(moveToCenter.cmd())
+            .andThen(Superstructure.getInstance().aimAndShootCommand()));
+
+    moveToCenter.atTime("deployIntake").onTrue(Superstructure.getInstance().toggleIntakeCommand());
     return routine;
   }
 }
