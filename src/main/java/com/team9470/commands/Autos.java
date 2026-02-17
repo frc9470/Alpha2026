@@ -38,10 +38,9 @@ public class Autos {
 
     routine.active().onTrue(
         moveToCenter.resetOdometry()
+            .andThen(Superstructure.getInstance().toggleIntakeCommand())
             .andThen(moveToCenter.cmd())
             .andThen(Superstructure.getInstance().aimAndShootCommand()));
-
-    moveToCenter.atTime("deployIntake").onTrue(Superstructure.getInstance().toggleIntakeCommand());
     return routine;
   }
 }
