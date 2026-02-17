@@ -17,6 +17,8 @@ import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import com.team9470.Constants.OperatorConstants;
 import com.team9470.subsystems.vision.Vision;
+import com.team9470.autos.CenterRushAuto;
+import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import static edu.wpi.first.units.Units.*;
 
 public class RobotContainer {
@@ -42,6 +44,9 @@ public class RobotContainer {
   private final CommandXboxController m_driverController = new CommandXboxController(
       OperatorConstants.kDriverControllerPort);
 
+  // Auto Chooser
+  private final SendableChooser<Command> m_chooser = new SendableChooser<>();
+
   // Debug Y-shot dashboard tuning (only used by Y button command)
   private static final String kDebugYShotRpmKey = "Debug/YShot/RPM";
   private static final String kDebugYShotHoodDegKey = "Debug/YShot/HoodAngleDeg";
@@ -61,6 +66,11 @@ public class RobotContainer {
 
     initDebugYShotDashboard();
     configureBindings();
+
+    // Auto Chooser
+    m_chooser.setDefaultOption("None", null);
+    m_chooser.addOption("Center Rush Auto", new CenterRushAuto());
+    SmartDashboard.putData("Auto Chooser", m_chooser);
   }
 
   private void initDebugYShotDashboard() {
@@ -173,6 +183,6 @@ public class RobotContainer {
   }
 
   public Command getAutonomousCommand() {
-    return null;
+    return m_chooser.getSelected();
   }
 }
