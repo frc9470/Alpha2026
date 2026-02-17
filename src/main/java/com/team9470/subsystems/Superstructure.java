@@ -114,8 +114,8 @@ public class Superstructure extends SubsystemBase {
         return Commands.run(() -> {
             var solution = AutoAim.calculate(poseSupplier.get(), speedsSupplier.get());
             shooter.setSetpoint(solution);
-            intake.setShooting(false);
-            intake.setAgitating(true);
+            intake.setShooting(true);
+            intake.setAgitating(false);
             double rotError = solution.targetRobotYaw()
                     .minus(poseSupplier.get().getRotation())
                     .getRadians();
@@ -174,8 +174,8 @@ public class Superstructure extends SubsystemBase {
         return Commands.run(() -> {
             var result = getAimResult();
             shooter.setSetpoint(result.solution());
-            intake.setShooting(false);
-            intake.setAgitating(true);
+            intake.setShooting(true);
+            intake.setAgitating(false);
             boolean canFire = result.isAligned() && result.solution().isValid() && shooter.isAtSetpoint();
             double rotError = result.solution().targetRobotYaw()
                     .minus(poseSupplier.get().getRotation())
