@@ -7,6 +7,7 @@ import choreo.auto.AutoTrajectory;
 import com.team9470.subsystems.Superstructure;
 import com.team9470.subsystems.swerve.Swerve;
 import edu.wpi.first.wpilibj2.command.Commands;
+import edu.wpi.first.wpilibj2.command.InstantCommand;
 
 public class Autos {
   private final AutoFactory m_autoFactory;
@@ -38,7 +39,7 @@ public class Autos {
 
     routine.active().onTrue(
         moveToCenter.resetOdometry()
-            .andThen(Superstructure.getInstance().toggleIntakeCommand())
+            .andThen(new InstantCommand(() -> Superstructure.getInstance().getIntake().setDeployed(true)))
             .andThen(moveToCenter.cmd())
             .andThen(Superstructure.getInstance().aimAndShootCommand()));
     return routine;
