@@ -10,17 +10,13 @@ import com.team254.lib.drivers.TalonUtil;
 import com.team9470.Ports;
 import com.team9470.Robot;
 import com.team9470.simulation.ProjectileSimulation;
+import com.team9470.telemetry.TelemetryManager;
+import com.team9470.telemetry.structs.ShooterSnapshot;
 import com.team9470.util.AutoAim.ShootingSolution;
-import com.team9470.util.TelemetryUtil;
 
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.util.Units;
-import edu.wpi.first.networktables.BooleanPublisher;
-import edu.wpi.first.networktables.DoublePublisher;
-import edu.wpi.first.networktables.NetworkTable;
-import edu.wpi.first.networktables.NetworkTableInstance;
-import edu.wpi.first.networktables.StringPublisher;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 import java.util.function.Supplier;
@@ -32,6 +28,9 @@ import java.util.function.Supplier;
  * All physics simulation is handled by ProjectileSimulation.
  */
 public class Shooter extends SubsystemBase {
+
+    private static final double kMinHoodAngleRotations = ShooterConstants.launchRadToMechanismRotations(
+            ShooterConstants.kMinHoodAngle.in(edu.wpi.first.units.Units.Radians));
 
     // Hardware
     private final TalonFX flywheel1 = TalonFXFactory.createDefaultTalon(Ports.FLYWHEEL_1);
@@ -47,48 +46,19 @@ public class Shooter extends SubsystemBase {
 
     // State
     private double targetSpeedRPS = 0.0;
-    private double targetHoodAngleRotations = ShooterConstants.launchRadToMechanismRotations(
-            ShooterConstants.kHoodHomePosition.in(edu.wpi.first.units.Units.Radians)); // Launch angle (mechanism
-                                                                                       // rotations)
+    private double targetHoodAngleRotations = kMinHoodAngleRotations; // Launch angle (mechanism rotations)
     private boolean isFiring = false;
     private boolean needsHoming = true;
 
     // Simulation context
     private Supplier<Pose2d> poseSupplier = Pose2d::new;
     private Supplier<ChassisSpeeds> speedsSupplier = ChassisSpeeds::new;
+    private final TelemetryManager telemetry = TelemetryManager.getInstance();
 
-    // ==================== TELEMETRY ====================
-    private final NetworkTable nt = NetworkTableInstance.getDefault().getTable("Shooter");
-
-    // State
-    private final BooleanPublisher ntHoming = nt.getBooleanTopic("Homing").publish();
-    private final BooleanPublisher ntFiring = nt.getBooleanTopic("Firing").publish();
-    private final BooleanPublisher ntAtSetpoint = nt.getBooleanTopic("AtSetpoint").publish();
-    private final StringPublisher ntState = nt.getStringTopic("State").publish();
-
-    // Hood position (degrees)
-    private final DoublePublisher ntHoodGoalDeg = TelemetryUtil.publishDouble(nt, "Hood/GoalDeg", "deg");
-    private final DoublePublisher ntHoodSetpointDeg = TelemetryUtil.publishDouble(nt, "Hood/SetpointDeg", "deg");
-    private final DoublePublisher ntHoodPositionDeg = TelemetryUtil.publishDouble(nt, "Hood/PositionDeg", "deg");
-    private final DoublePublisher ntHoodErrorDeg = TelemetryUtil.publishDouble(nt, "Hood/ErrorDeg", "deg");
-
-    // Hood motor signals
-    private final DoublePublisher ntHoodVelocity = TelemetryUtil.publishDouble(nt, "Hood/VelocityDegPerSec", "deg/s");
-    private final DoublePublisher ntHoodStatorCurrent = TelemetryUtil.publishDouble(nt, "Hood/StatorCurrentAmps", "A");
-    private final DoublePublisher ntHoodCurrent = TelemetryUtil.publishDouble(nt, "Hood/SupplyCurrentAmps", "A");
-    private final DoublePublisher ntHoodVoltage = TelemetryUtil.publishDouble(nt, "Hood/AppliedVolts", "V");
-
-    // Flywheel
-    private final DoublePublisher ntFlywheelTargetRPS = TelemetryUtil.publishDouble(nt, "Flywheel/TargetRPS", "rps");
-    private final DoublePublisher ntFlywheelCurrentRPS = TelemetryUtil.publishDouble(nt, "Flywheel/CurrentRPS", "rps");
-    private final DoublePublisher ntFlywheelErrorRPS = TelemetryUtil.publishDouble(nt, "Flywheel/ErrorRPS", "rps");
-    private final DoublePublisher ntFlywheelVoltage = TelemetryUtil.publishDouble(nt, "Flywheel/AppliedVolts", "V");
-    private final DoublePublisher ntFlywheelSupplyCurrent = TelemetryUtil.publishDouble(nt,
-            "Flywheel/SupplyCurrentAmps", "A");
-    private final DoublePublisher ntFlywheelStatorCurrent = TelemetryUtil.publishDouble(nt,
-            "Flywheel/StatorCurrentAmps",
-            "A");
-    private final DoublePublisher ntSimMeasuredBPS = TelemetryUtil.publishDouble(nt, "Sim/MeasuredBPS", "bps");
+    private static final int STATE_HOMING = 0;
+    private static final int STATE_IDLE = 1;
+    private static final int STATE_SPINNING_UP = 2;
+    private static final int STATE_FIRING = 3;
 
     /** Clamp hood rotations to valid launch-angle range. */
     private static double clampHoodRotations(double rotations) {
@@ -175,6 +145,7 @@ public class Shooter extends SubsystemBase {
      */
     public void stop() {
         targetSpeedRPS = 0.0;
+        targetHoodAngleRotations = kMinHoodAngleRotations;
         isFiring = false;
     }
 
@@ -241,27 +212,8 @@ public class Shooter extends SubsystemBase {
         double currentHoodRot = getCurrentHoodRotations();
         double currentLaunchRad = ShooterConstants.mechanismRotationsToLaunchRad(currentHoodRot);
         double targetLaunchRad = ShooterConstants.mechanismRotationsToLaunchRad(targetHoodAngleRotations);
-        double currentHoodDeg = Math.toDegrees(currentLaunchRad);
-        double targetHoodDeg = Math.toDegrees(targetLaunchRad);
         double currentRPS = getCurrentFlywheelRPS();
 
-        // State
-        ntHoming.set(needsHoming);
-        ntFiring.set(isFiring);
-        ntAtSetpoint.set(!needsHoming && isAtSetpoint());
-        ntState.set(needsHoming ? "HOMING" : (isFiring ? "FIRING" : (targetSpeedRPS > 0 ? "SPINNING_UP" : "IDLE")));
-
-        // Hood
-        ntHoodGoalDeg.set(targetHoodDeg);
-        ntHoodSetpointDeg.set(targetHoodDeg);
-        ntHoodPositionDeg.set(currentHoodDeg);
-        ntHoodErrorDeg.set(targetHoodDeg - currentHoodDeg);
-        ntHoodVelocity.set(hoodMotor.getVelocity().getValueAsDouble() * 360.0);
-        ntHoodStatorCurrent.set(hoodMotor.getStatorCurrent().getValueAsDouble());
-        ntHoodCurrent.set(hoodMotor.getSupplyCurrent().getValueAsDouble());
-        ntHoodVoltage.set(hoodMotor.getMotorVoltage().getValueAsDouble());
-
-        // Flywheel
         double avgFlywheelVoltage = (flywheel1.getMotorVoltage().getValueAsDouble()
                 + flywheel2.getMotorVoltage().getValueAsDouble()
                 + flywheel3.getMotorVoltage().getValueAsDouble()
@@ -274,12 +226,31 @@ public class Shooter extends SubsystemBase {
                 + flywheel2.getStatorCurrent().getValueAsDouble()
                 + flywheel3.getStatorCurrent().getValueAsDouble()
                 + flywheel4.getStatorCurrent().getValueAsDouble()) / 4.0;
-        ntFlywheelTargetRPS.set(targetSpeedRPS);
-        ntFlywheelCurrentRPS.set(currentRPS);
-        ntFlywheelErrorRPS.set(targetSpeedRPS - currentRPS);
-        ntFlywheelVoltage.set(avgFlywheelVoltage);
-        ntFlywheelSupplyCurrent.set(avgFlywheelSupplyCurrent);
-        ntFlywheelStatorCurrent.set(avgFlywheelStatorCurrent);
+
+        boolean atSetpoint = !needsHoming && isAtSetpoint();
+        int stateCode = needsHoming
+                ? STATE_HOMING
+                : (isFiring ? STATE_FIRING : (targetSpeedRPS > 0.0 ? STATE_SPINNING_UP : STATE_IDLE));
+
+        telemetry.publishShooterState(new ShooterSnapshot(
+                needsHoming,
+                isFiring,
+                atSetpoint,
+                stateCode,
+                targetLaunchRad,
+                targetLaunchRad,
+                currentLaunchRad,
+                targetLaunchRad - currentLaunchRad,
+                hoodMotor.getVelocity().getValueAsDouble() * 2.0 * Math.PI,
+                hoodMotor.getStatorCurrent().getValueAsDouble(),
+                hoodMotor.getSupplyCurrent().getValueAsDouble(),
+                hoodMotor.getMotorVoltage().getValueAsDouble(),
+                targetSpeedRPS,
+                currentRPS,
+                targetSpeedRPS - currentRPS,
+                avgFlywheelVoltage,
+                avgFlywheelSupplyCurrent,
+                avgFlywheelStatorCurrent));
     }
 
     @Override
@@ -302,8 +273,6 @@ public class Shooter extends SubsystemBase {
         double launchVelRot = Units.radiansToRotations(launchVelRadPerSec);
         hoodMotor.getSimState().setRotorVelocity(launchVelRot * ShooterConstants.kHoodGearRatio);
 
-        // Sim telemetry
-        ntSimMeasuredBPS.set(sim.getMeasuredBPS());
     }
 
     /**

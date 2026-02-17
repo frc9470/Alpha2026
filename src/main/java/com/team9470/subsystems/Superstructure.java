@@ -3,11 +3,12 @@ package com.team9470.subsystems;
 import com.team9470.subsystems.hopper.Hopper;
 import com.team9470.subsystems.intake.Intake;
 import com.team9470.subsystems.shooter.Shooter;
+import com.team9470.telemetry.TelemetryManager;
+import com.team9470.telemetry.structs.SuperstructureSnapshot;
 import com.team9470.util.AutoAim;
 
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
@@ -33,6 +34,7 @@ public class Superstructure extends SubsystemBase {
     private final Shooter shooter;
     private final Intake intake;
     private final Hopper hopper;
+    private final TelemetryManager telemetry = TelemetryManager.getInstance();
 
     // Context suppliers (set by RobotContainer)
     private Supplier<Pose2d> poseSupplier = () -> new Pose2d();
@@ -56,6 +58,7 @@ public class Superstructure extends SubsystemBase {
 
     @Override
     public void periodic() {
+        AutoAim.publishModeTelemetry(poseSupplier.get());
         // No unconditional setSetpoint here - AutoAim setpoints are applied
         // only by shooting commands (shootCommand, aimAndShootCommand).
         // This prevents overriding manual flywheel/hood commands (e.g. debug Y button).
@@ -95,6 +98,7 @@ public class Superstructure extends SubsystemBase {
         return Commands.run(() -> {
             var solution = AutoAim.calculate(poseSupplier.get(), speedsSupplier.get());
             shooter.setSetpoint(solution);
+            intake.setAgitating(true);
             double rotError = solution.targetRobotYaw()
                     .minus(poseSupplier.get().getRotation())
                     .getRadians();
@@ -112,8 +116,9 @@ public class Superstructure extends SubsystemBase {
             publishTelemetry(isAligned, canFire, rotCmd, rotError);
 
         }, this).finallyDo(() -> {
-            shooter.setFiring(false);
+            shooter.stop();
             hopper.stop();
+            intake.setAgitating(false);
         }).withName("Superstructure Shoot");
     }
 
@@ -151,6 +156,7 @@ public class Superstructure extends SubsystemBase {
         return Commands.run(() -> {
             var result = getAimResult();
             shooter.setSetpoint(result.solution());
+            intake.setAgitating(true);
             boolean canFire = result.isAligned() && result.solution().isValid() && shooter.isAtSetpoint();
             double rotError = result.solution().targetRobotYaw()
                     .minus(poseSupplier.get().getRotation())
@@ -164,8 +170,9 @@ public class Superstructure extends SubsystemBase {
             publishTelemetry(result.isAligned(), canFire, result.rotationCommand(), rotError);
 
         }, this).finallyDo(() -> {
-            shooter.setFiring(false);
+            shooter.stop();
             hopper.stop();
+            intake.setAgitating(false);
         }).withName("Superstructure AimAndShoot");
     }
 
@@ -174,8 +181,9 @@ public class Superstructure extends SubsystemBase {
      */
     public Command idleCommand() {
         return Commands.runOnce(() -> {
-            shooter.setFiring(false);
+            shooter.stop();
             hopper.stop();
+            intake.setAgitating(false);
         }, this).withName("Superstructure Idle");
     }
 
@@ -194,9 +202,6 @@ public class Superstructure extends SubsystemBase {
     }
 
     private void publishTelemetry(boolean isAligned, boolean canFire, double rotCmd, double rotErrorRad) {
-        SmartDashboard.putBoolean("Superstructure/Aligned", isAligned);
-        SmartDashboard.putBoolean("Superstructure/CanFire", canFire);
-        SmartDashboard.putNumber("Superstructure/RotCmd", rotCmd);
-        SmartDashboard.putNumber("Superstructure/RotError", Math.toDegrees(rotErrorRad));
+        telemetry.publishSuperstructureState(new SuperstructureSnapshot(isAligned, canFire, rotCmd, rotErrorRad));
     }
 }

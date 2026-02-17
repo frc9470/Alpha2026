@@ -6,6 +6,8 @@ package com.team9470;
 
 import choreo.auto.AutoChooser;
 import com.team9470.commands.Autos;
+import com.team9470.telemetry.TelemetryManager;
+import com.team9470.telemetry.structs.YShotSnapshot;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -41,6 +43,7 @@ public class RobotContainer {
   private final Vision m_vision = Vision.getInstance();
   private final Autos m_autos = new Autos(m_swerve);
   private final AutoChooser m_autoChooser = new AutoChooser();
+  private final TelemetryManager telemetry = TelemetryManager.getInstance();
 
   // Controllers
   private final CommandXboxController m_driverController = new CommandXboxController(
@@ -49,11 +52,6 @@ public class RobotContainer {
   // Debug Y-shot dashboard tuning (only used by Y button command)
   private static final String kDebugYShotRpmKey = "Debug/YShot/RPM";
   private static final String kDebugYShotHoodDegKey = "Debug/YShot/HoodAngleDeg";
-  private static final String kDebugYShotRequestedRpmKey = "Debug/YShot/RequestedRPM";
-  private static final String kDebugYShotRequestedHoodDegKey = "Debug/YShot/RequestedHoodDeg";
-  private static final String kDebugYShotAppliedRpmKey = "Debug/YShot/AppliedRPM";
-  private static final String kDebugYShotAppliedHoodDegKey = "Debug/YShot/AppliedHoodDeg";
-  private static final String kDebugYShotReadyToFeedKey = "Debug/YShot/ReadyToFeed";
   private static final double kDebugYShotDefaultRpm = 3000.0;
   private static final double kDebugYShotDefaultHoodDeg = 30.0;
 
@@ -71,17 +69,12 @@ public class RobotContainer {
   private void initDebugYShotDashboard() {
     SmartDashboard.putNumber(kDebugYShotRpmKey, kDebugYShotDefaultRpm);
     SmartDashboard.putNumber(kDebugYShotHoodDegKey, kDebugYShotDefaultHoodDeg);
-    SmartDashboard.putNumber(kDebugYShotRequestedRpmKey, kDebugYShotDefaultRpm);
-    SmartDashboard.putNumber(kDebugYShotRequestedHoodDegKey, kDebugYShotDefaultHoodDeg);
   }
 
   private final SwerveRequest.SwerveDriveBrake xLock = new SwerveRequest.SwerveDriveBrake();
 
   private void configureBindings() {
     // ==================== TRIGGERS ====================
-
-    // Left Trigger: Intake (deploy arm + run rollers while held)
-    m_driverController.leftTrigger().whileTrue(m_superstructure.intakeCommand());
 
     // Right Trigger: Auto-Aim & Shoot/Feed
     m_driverController.rightTrigger().whileTrue(
@@ -104,9 +97,7 @@ public class RobotContainer {
             vY *= scale;
           }
 
-          SmartDashboard.putBoolean("Drive/AutoAimActive", true);
-          SmartDashboard.putNumber("Drive/RotCmd", aim.rotationCommand());
-          SmartDashboard.putNumber("Drive/TransLimit", transLimit);
+          telemetry.publishDriveAutoAim(true, aim.rotationCommand(), transLimit);
 
           m_swerve.setControl(autoAimDrive
               .withVelocityX(vX)
@@ -115,7 +106,7 @@ public class RobotContainer {
 
         }, m_swerve)
             .alongWith(m_superstructure.aimAndShootCommand())
-            .finallyDo(() -> SmartDashboard.putBoolean("Drive/AutoAimActive", false)));
+            .finallyDo(() -> telemetry.publishDriveAutoAim(false, 0.0, 0.0)));
 
     // ==================== BUMPERS ====================
 
@@ -152,21 +143,31 @@ public class RobotContainer {
               m_superstructure.getShooter().setFlywheelSpeed(targetRps);
               m_superstructure.getShooter().setHoodAngle(
                   ShooterConstants.launchRadToMechanismRotations(Math.toRadians(clampedHoodDeg)));
-              boolean readyToFeed = m_superstructure.getShooter().isAtSetpoint();
-              m_superstructure.getShooter().setFiring(readyToFeed);
-              m_superstructure.getHopper().setRunning(readyToFeed);
+              boolean shooterAtSetpoint = m_superstructure.getShooter().isAtSetpoint();
+              // Y debug should force-feed immediately instead of waiting for shooter readiness.
+              m_superstructure.getShooter().setFiring(true);
+              m_superstructure.getHopper().setRunning(true);
+              m_superstructure.getIntake().setAgitating(true);
 
-              SmartDashboard.putNumber(kDebugYShotRequestedRpmKey, requestedRpm);
-              SmartDashboard.putNumber(kDebugYShotRequestedHoodDegKey, requestedHoodDeg);
-              SmartDashboard.putNumber(kDebugYShotAppliedRpmKey, rpm);
-              SmartDashboard.putNumber(kDebugYShotAppliedHoodDegKey, clampedHoodDeg);
-              SmartDashboard.putBoolean(kDebugYShotReadyToFeedKey, readyToFeed);
+              telemetry.publishYShotState(new YShotSnapshot(
+                  true,
+                  requestedRpm / 60.0,
+                  Math.toRadians(requestedHoodDeg),
+                  rpm / 60.0,
+                  Math.toRadians(clampedHoodDeg),
+                  shooterAtSetpoint));
             },
             () -> {
-              m_superstructure.getShooter().setFlywheelSpeed(0);
-              m_superstructure.getShooter().setFiring(false);
+              m_superstructure.getShooter().stop();
               m_superstructure.getHopper().stop();
-              SmartDashboard.putBoolean(kDebugYShotReadyToFeedKey, false);
+              m_superstructure.getIntake().setAgitating(false);
+              telemetry.publishYShotState(new YShotSnapshot(
+                  false,
+                  0.0,
+                  0.0,
+                  0.0,
+                  0.0,
+                  false));
             }));
 
     // ==================== DEFAULT COMMANDS ====================

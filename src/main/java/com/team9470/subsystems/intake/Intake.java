@@ -9,14 +9,11 @@ import com.team254.lib.drivers.TalonUtil;
 import com.team9470.Ports;
 import com.team9470.Robot;
 import com.team9470.simulation.IntakeSimulation;
-import com.team9470.util.TelemetryUtil;
+import com.team9470.telemetry.TelemetryManager;
+import com.team9470.telemetry.structs.IntakeSnapshot;
 
-import edu.wpi.first.networktables.BooleanPublisher;
-import edu.wpi.first.networktables.DoublePublisher;
-import edu.wpi.first.networktables.NetworkTable;
-import edu.wpi.first.networktables.NetworkTableInstance;
-import edu.wpi.first.networktables.StringPublisher;
 import edu.wpi.first.units.measure.Angle;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
@@ -49,30 +46,15 @@ public class Intake extends SubsystemBase {
 
     // State
     private boolean deployed = false;
+    private boolean agitating = false;
     private boolean needsHoming = true;
+    private final TelemetryManager telemetry = TelemetryManager.getInstance();
 
-    // ==================== TELEMETRY ====================
-    private final NetworkTable nt = NetworkTableInstance.getDefault().getTable("Intake");
-
-    // State publishers
-    private final BooleanPublisher ntHoming = nt.getBooleanTopic("Homing").publish();
-    private final BooleanPublisher ntDeployed = nt.getBooleanTopic("Deployed").publish();
-    private final StringPublisher ntState = nt.getStringTopic("State").publish();
-
-    // Pivot position (degrees)
-    private final DoublePublisher ntGoalDeg = TelemetryUtil.publishDouble(nt, "Pivot/GoalDeg", "deg");
-    private final DoublePublisher ntSetpointDeg = TelemetryUtil.publishDouble(nt, "Pivot/SetpointDeg", "deg");
-    private final DoublePublisher ntPositionDeg = TelemetryUtil.publishDouble(nt, "Pivot/PositionDeg", "deg");
-    private final DoublePublisher ntErrorDeg = TelemetryUtil.publishDouble(nt, "Pivot/ErrorDeg", "deg");
-
-    // Pivot motor signals
-    private final DoublePublisher ntPivotVelocity = TelemetryUtil.publishDouble(nt, "Pivot/VelocityDegPerSec", "deg/s");
-    private final DoublePublisher ntPivotCurrent = TelemetryUtil.publishDouble(nt, "Pivot/SupplyCurrentAmps", "A");
-    private final DoublePublisher ntPivotVoltage = TelemetryUtil.publishDouble(nt, "Pivot/AppliedVolts", "V");
-
-    // Roller signals
-    private final DoublePublisher ntRollerVoltage = TelemetryUtil.publishDouble(nt, "Roller/AppliedVolts", "V");
-    private final DoublePublisher ntRollerCurrent = TelemetryUtil.publishDouble(nt, "Roller/SupplyCurrentAmps", "A");
+    private static final int STATE_HOMING = 0;
+    private static final int STATE_RETRACTED = 1;
+    private static final int STATE_DEPLOYED = 2;
+    private static final int STATE_AGITATE_DEPLOY = 3;
+    private static final int STATE_AGITATE_MID = 4;
 
     private Intake() {
         // Apply configurations
@@ -86,6 +68,10 @@ public class Intake extends SubsystemBase {
 
     public void setDeployed(boolean deployed) {
         this.deployed = deployed;
+    }
+
+    public void setAgitating(boolean agitating) {
+        this.agitating = agitating;
     }
 
     /** Toggle deploy/retract arm position. */
@@ -126,49 +112,71 @@ public class Intake extends SubsystemBase {
                 needsHoming = false;
             }
 
-            // Homing telemetry
-            ntHoming.set(true);
-            ntDeployed.set(deployed);
-            ntState.set("HOMING");
-            ntPivotCurrent.set(current);
-            ntPivotVelocity.set(velocity * 360.0); // rot/s -> deg/s
-            ntPivotVoltage.set(IntakeConstants.kHomingVoltage);
+            telemetry.publishIntakeState(new IntakeSnapshot(
+                    true,
+                    deployed,
+                    agitating,
+                    STATE_HOMING,
+                    0.0,
+                    0.0,
+                    IntakeConstants.pivotMechanismRotationsToAngle(pivot.getPosition().getValueAsDouble()).in(Radians),
+                    0.0,
+                    velocity * 2.0 * Math.PI,
+                    current,
+                    IntakeConstants.kHomingVoltage,
+                    0.0,
+                    roller.getSupplyCurrent().getValueAsDouble()));
             return;
         }
 
         // --- Normal operation ---
 
         // Pivot control
-        Angle targetAngle = deployed ? IntakeConstants.kDeployAngle : IntakeConstants.kRetractAngle;
+        boolean agitateAtDeploy = false;
+        if (agitating) {
+            double t = Timer.getFPGATimestamp();
+            agitateAtDeploy = Math.sin(2.0 * Math.PI * IntakeConstants.kAgitateFrequencyHz * t) >= 0.0;
+        }
+        Angle targetAngle;
+        if (agitating) {
+            targetAngle = agitateAtDeploy ? IntakeConstants.kDeployAngle : IntakeConstants.kAgitateMiddleAngle;
+        } else {
+            targetAngle = deployed ? IntakeConstants.kDeployAngle : IntakeConstants.kRetractAngle;
+        }
         double targetRot = IntakeConstants.pivotAngleToMechanismRotations(targetAngle);
         pivot.setControl(mmRequest.withPosition(targetRot));
 
         // Roller control
-        double rollerVolts = deployed ? IntakeConstants.kRollerVoltage : 0.0;
+        double rollerVolts = (deployed || agitating) ? IntakeConstants.kRollerVoltage : 0.0;
         roller.setControl(voltRequest.withOutput(rollerVolts));
 
         // --- Telemetry ---
         double currentPositionRot = pivot.getPosition().getValueAsDouble();
-        double currentPositionDeg = IntakeConstants.pivotMechanismRotationsToAngle(currentPositionRot)
-                .in(Degrees);
-        double goalDeg = targetAngle.in(Degrees);
-        double setpointDeg = IntakeConstants.pivotMechanismRotationsToAngle(targetRot).in(Degrees);
+        double currentPositionRad = IntakeConstants.pivotMechanismRotationsToAngle(currentPositionRot)
+                .in(Radians);
+        double goalRad = targetAngle.in(Radians);
+        double setpointRad = IntakeConstants.pivotMechanismRotationsToAngle(targetRot).in(Radians);
 
-        ntHoming.set(false);
-        ntDeployed.set(deployed);
-        ntState.set(deployed ? "DEPLOYED" : "RETRACTED");
-
-        ntGoalDeg.set(goalDeg);
-        ntSetpointDeg.set(setpointDeg);
-        ntPositionDeg.set(currentPositionDeg);
-        ntErrorDeg.set(setpointDeg - currentPositionDeg);
-
-        ntPivotVelocity.set(pivot.getVelocity().getValueAsDouble() * 360.0);
-        ntPivotCurrent.set(pivot.getSupplyCurrent().getValueAsDouble());
-        ntPivotVoltage.set(pivot.getMotorVoltage().getValueAsDouble());
-
-        ntRollerVoltage.set(rollerVolts);
-        ntRollerCurrent.set(roller.getSupplyCurrent().getValueAsDouble());
+        int stateCode;
+        if (agitating) {
+            stateCode = agitateAtDeploy ? STATE_AGITATE_DEPLOY : STATE_AGITATE_MID;
+        } else {
+            stateCode = deployed ? STATE_DEPLOYED : STATE_RETRACTED;
+        }
+        telemetry.publishIntakeState(new IntakeSnapshot(
+                false,
+                deployed,
+                agitating,
+                stateCode,
+                goalRad,
+                setpointRad,
+                currentPositionRad,
+                setpointRad - currentPositionRad,
+                pivot.getVelocity().getValueAsDouble() * 2.0 * Math.PI,
+                pivot.getSupplyCurrent().getValueAsDouble(),
+                pivot.getMotorVoltage().getValueAsDouble(),
+                rollerVolts,
+                roller.getSupplyCurrent().getValueAsDouble()));
 
         // Update visualization (works in both real and sim)
         if (Robot.isSimulation()) {
@@ -178,13 +186,21 @@ public class Intake extends SubsystemBase {
 
     @Override
     public void simulationPeriodic() {
-        IntakeSimulation.getInstance().update(pivot, roller, deployed);
+        IntakeSimulation.getInstance().update(pivot, roller, deployed || agitating);
     }
 
     // --- Accessors for physics ---
 
     public boolean isRunning() {
+        return deployed || agitating;
+    }
+
+    public boolean isDeployed() {
         return deployed;
+    }
+
+    public boolean isAgitating() {
+        return agitating;
     }
 
     public double getPivotAngle() {

@@ -9,7 +9,6 @@ import edu.wpi.first.wpilibj.simulation.SingleJointedArmSim;
 import edu.wpi.first.wpilibj.smartdashboard.Mechanism2d;
 import edu.wpi.first.wpilibj.smartdashboard.MechanismLigament2d;
 import edu.wpi.first.wpilibj.smartdashboard.MechanismRoot2d;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.util.Color;
 import edu.wpi.first.wpilibj.util.Color8Bit;
 
@@ -52,7 +51,6 @@ public class IntakeSimulation {
         MechanismRoot2d root = mech.getRoot("Pivot", 0.35, 0.2);
         arm = root.append(new MechanismLigament2d("Arm", IntakeConstants.kIntakeLength, 90));
         arm.setColor(new Color8Bit(Color.kYellow));
-        SmartDashboard.putData("Intake/Mechanism2d", mech);
     }
 
     /**

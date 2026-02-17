@@ -17,9 +17,9 @@ import com.ctre.phoenix6.swerve.SwerveRequest;
 import com.team9470.TunerConstants;
 import com.team9470.Telemetry;
 import com.team9470.TunerConstants.TunerSwerveDrivetrain;
+import com.team9470.telemetry.TelemetryManager;
 import com.team9470.subsystems.vision.VisionPoseAcceptor;
 import com.team9470.util.AllianceFlipUtil;
-import com.team9470.util.LogUtil;
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.controller.PIDController;
@@ -59,6 +59,7 @@ public class Swerve extends TunerSwerveDrivetrain implements Subsystem {
     private final VisionPoseAcceptor visionPoseAcceptor = new VisionPoseAcceptor();
     private static Swerve instance;
     private final Telemetry logger = new Telemetry(TunerConstants.kSpeedAt12Volts.in(MetersPerSecond));
+    private final TelemetryManager telemetry = TelemetryManager.getInstance();
 
     private static final double SIM_LOOP_PERIOD = 0.005; // 5 ms
     /* Blue alliance sees forward as 0 degrees (toward red alliance wall) */
@@ -324,8 +325,6 @@ public class Swerve extends TunerSwerveDrivetrain implements Subsystem {
     @Override
     public void periodic() {
         logger.telemeterize(getState());
-        // Log telemetry
-        logger.telemeterize(getState());
         /*
          * Periodically try to apply the operator perspective.
          * If we haven't applied the operator perspective before, then we should apply
@@ -346,16 +345,9 @@ public class Swerve extends TunerSwerveDrivetrain implements Subsystem {
                 m_hasAppliedOperatorPerspective = true;
             });
         }
-        if (curReefPos != null)
-            LogUtil.recordPose2d("Controls/ReefPos", curReefPos);
+        telemetry.publishDriveReefPose(curReefPos);
 
         // FieldConstants removed - logic commented out
-        // for (var tag : FieldConstants.defaultAprilTagType.getLayout().getTags()) {
-        // var pose = getTxTyPose(tag.ID);
-        // LogUtil.recordPose2d(
-        // "RobotState/TxTyPoses/" + tag.ID,
-        // pose.map(pose2d -> new Pose2d[]{pose2d}).orElseGet(() -> new Pose2d[]{}));
-        // }
     }
 
     private void startSimThread() {

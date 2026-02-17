@@ -8,10 +8,11 @@ import com.team254.lib.drivers.TalonFXFactory;
 import com.team254.lib.drivers.TalonUtil;
 
 import com.team9470.Ports;
+import com.team9470.telemetry.TelemetryManager;
+import com.team9470.telemetry.structs.HopperSnapshot;
 
 import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.Current;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
@@ -44,6 +45,7 @@ public class Hopper extends SubsystemBase {
     // Status signals
     private final StatusSignal<AngularVelocity> leftVelocity;
     private final StatusSignal<Current> leftCurrent;
+    private final TelemetryManager telemetry = TelemetryManager.getInstance();
 
     private Hopper() {
         leftMotor = TalonFXFactory.createDefaultTalon(Ports.HOPPER_LEFT);
@@ -72,9 +74,11 @@ public class Hopper extends SubsystemBase {
         rightMotor.setControl(voltageRequest.withOutput(voltage));
         topMotor.setControl(voltageRequest.withOutput(voltage));
 
-        SmartDashboard.putBoolean("Hopper/Running", running);
-        SmartDashboard.putNumber("Hopper/Velocity", leftVelocity.getValueAsDouble());
-        SmartDashboard.putNumber("Hopper/Current", leftCurrent.getValueAsDouble());
+        telemetry.publishHopperState(new HopperSnapshot(
+                running,
+                voltage,
+                leftVelocity.getValueAsDouble(),
+                leftCurrent.getValueAsDouble()));
     }
 
     // --- Control ---

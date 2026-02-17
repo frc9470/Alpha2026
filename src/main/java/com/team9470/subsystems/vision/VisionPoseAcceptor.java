@@ -1,10 +1,10 @@
 package com.team9470.subsystems.vision;
 
 import com.team9470.FieldConstants;
+import com.team9470.telemetry.TelemetryManager;
 import edu.wpi.first.apriltag.AprilTagFieldLayout;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Twist2d;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 /**
  * VisionPoseAcceptor is a class that determines whether a vision update should
@@ -16,6 +16,7 @@ public class VisionPoseAcceptor {
 	private static final double FIELD_BORDER_MARGIN = 0.5;
 	private static final double MAX_VISION_CORRECTION = 2.0; // Jump from fused pose
 	private static final AprilTagFieldLayout aprilTagFieldLayout = FieldConstants.defaultAprilTagType.getLayout();
+	private final TelemetryManager telemetry = TelemetryManager.getInstance();
 
 	Pose2d mLastVisionFieldToVehicle = null;
 
@@ -46,12 +47,12 @@ public class VisionPoseAcceptor {
 				// FIELD_BORDER_MARGIN) {
 				|| visionFieldToVehicle.getTranslation().getY() > aprilTagFieldLayout.getFieldWidth()
 						+ FIELD_BORDER_MARGIN) {
-			SmartDashboard.putString("Vision/Validation", "Outside field");
+			telemetry.publishVisionValidationStatusCode(TelemetryManager.VALIDATION_OUTSIDE_FIELD);
 			return false;
 		}
 
-		if (Math.hypot(robotVelocity.dx, robotVelocity.dx) > 4.0) {
-			SmartDashboard.putString("Vision/Validation", "Max velocity");
+		if (Math.hypot(robotVelocity.dx, robotVelocity.dy) > 4.0) {
+			telemetry.publishVisionValidationStatusCode(TelemetryManager.VALIDATION_MAX_VELOCITY);
 			return false;
 		}
 
@@ -59,12 +60,12 @@ public class VisionPoseAcceptor {
 			// Check max correction
 			if (visionFieldToVehicle.getTranslation()
 					.getDistance(lastFieldToVehicle.getTranslation()) > MAX_VISION_CORRECTION) {
-				SmartDashboard.putString("Vision/Validation", "Max correction");
+				telemetry.publishVisionValidationStatusCode(TelemetryManager.VALIDATION_MAX_CORRECTION);
 				return false;
 			}
 		}
 
-		SmartDashboard.putString("Vision/Validation", "OK");
+		telemetry.publishVisionValidationStatusCode(TelemetryManager.VALIDATION_OK);
 		return true;
 	}
 }

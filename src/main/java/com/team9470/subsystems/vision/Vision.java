@@ -2,9 +2,10 @@ package com.team9470.subsystems.vision;
 
 import com.team9470.FieldConstants;
 import com.team9470.Robot;
+import com.team9470.telemetry.TelemetryManager;
+import com.team9470.telemetry.structs.VisionSnapshot;
 import com.team9470.subsystems.swerve.Swerve;
 import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import org.photonvision.PhotonCamera;
 import org.photonvision.simulation.PhotonCameraSim;
@@ -26,6 +27,7 @@ public class Vision extends SubsystemBase {
     private boolean visionDisabled = false;
 
     private final List<VisionDevice> devices = List.of(frontL, frontR);
+    private final TelemetryManager telemetry = TelemetryManager.getInstance();
 
     // ----------------- SIMULATION -----------------
     private PhotonCameraSim leftCameraSim;
@@ -83,9 +85,16 @@ public class Vision extends SubsystemBase {
 
     @Override
     public void periodic() {
-        SmartDashboard.putNumber("Vision/Heartbeat", count);
-        count++;
         devices.forEach(visionDevice -> visionDevice.updatePosition(Swerve.getInstance()));
+        int connectedCount = (int) devices.stream().filter(VisionDevice::isConnected).count();
+        telemetry.publishVisionState(new VisionSnapshot(
+                count,
+                connectedCount == devices.size(),
+                visionDisabled,
+                connectedCount,
+                devices.size(),
+                telemetry.getVisionValidationStatusCode()));
+        count++;
     }
 
     @Override

@@ -4,6 +4,8 @@ import com.team9470.FieldConstants;
 import com.team9470.subsystems.intake.Intake;
 import com.team9470.subsystems.swerve.Swerve;
 import com.team9470.subsystems.shooter.ShooterConstants;
+import com.team9470.telemetry.TelemetryManager;
+import com.team9470.telemetry.structs.SimSnapshot;
 import com.team9470.util.AutoAim;
 
 import edu.wpi.first.math.VecBuilder;
@@ -12,13 +14,9 @@ import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.math.system.plant.LinearSystemId;
 import edu.wpi.first.math.util.Units;
-import edu.wpi.first.networktables.NetworkTableInstance;
-import edu.wpi.first.networktables.StructArrayPublisher;
-import edu.wpi.first.networktables.StructPublisher;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.simulation.FlywheelSim;
 import edu.wpi.first.wpilibj.simulation.SingleJointedArmSim;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 import static edu.wpi.first.units.Units.*;
 
@@ -50,10 +48,7 @@ public class ProjectileSimulation {
     private double lastLaunchTime = 0.0;
     private double measuredBPS = 0.0;
     private boolean shootLeft = true;
-
-    // NT Publishers
-    private final StructArrayPublisher<Pose3d> ballPublisher;
-    private final StructPublisher<Pose3d> targetPublisher;
+    private final TelemetryManager telemetry = TelemetryManager.getInstance();
 
     // Flywheel/Hood Simulation
     private final FlywheelSim flywheelSim;
@@ -66,10 +61,6 @@ public class ProjectileSimulation {
     private Supplier<Double> hoodVoltageSupplier = () -> 0.0;
 
     private ProjectileSimulation() {
-        var table = NetworkTableInstance.getDefault().getTable("Sim");
-        ballPublisher = table.getStructArrayTopic("BallPose", Pose3d.struct).publish();
-        targetPublisher = table.getStructTopic("TargetPose", Pose3d.struct).publish();
-
         // Flywheel simulation
         flywheelSim = new FlywheelSim(
                 LinearSystemId.createFlywheelSystem(
@@ -139,11 +130,11 @@ public class ProjectileSimulation {
         // Publish visualization
         publish();
 
-        // Telemetry
-        SmartDashboard.putNumber("Sim/FlywheelRPM", flywheelSim.getAngularVelocityRPM());
-        SmartDashboard.putNumber("Sim/HoodAngleDeg", Math.toDegrees(hoodSim.getAngleRads()));
-        SmartDashboard.putNumber("Sim/ProjectileCount", projectiles.size());
-        SmartDashboard.putNumber("Sim/MeasuredBPS", measuredBPS);
+        telemetry.publishSimState(new SimSnapshot(
+                flywheelSim.getAngularVelocityRPM() / 60.0,
+                hoodSim.getAngleRads(),
+                projectiles.size(),
+                measuredBPS));
     }
 
     private boolean isFlywheelAtSetpoint(double targetRPS) {
@@ -231,7 +222,7 @@ public class ProjectileSimulation {
         double intakeAngle = intake.getPivotAngle();
         boolean intakeActive = intake.isRunning();
 
-        PhysicsSim.simulate(dt, projectiles, AutoAim.getTarget(), robotPose, robotSpeeds,
+        PhysicsSim.simulate(dt, projectiles, AutoAim.getTarget(robotPose), robotPose, robotSpeeds,
                 intakeAngle, intakeActive);
 
         // Remove scored projectiles
@@ -248,8 +239,11 @@ public class ProjectileSimulation {
         Pose3d[] ballPoses = projectiles.stream()
                 .map(p -> new Pose3d(p.position, new Rotation3d()))
                 .toArray(Pose3d[]::new);
-        ballPublisher.set(ballPoses);
-        targetPublisher.set(new Pose3d(AutoAim.getTarget(), new Rotation3d()));
+        Pose2d pose = poseSupplier.get();
+        if (pose == null) {
+            pose = new Pose2d();
+        }
+        telemetry.publishSimGeometry(ballPoses, new Pose3d(AutoAim.getTarget(pose), new Rotation3d()));
     }
 
     // Accessors for Shooter to update motor sim states
