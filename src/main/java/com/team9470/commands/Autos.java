@@ -13,8 +13,7 @@ public class Autos {
   private final AutoFactory m_autoFactory;
 
   public Autos(Swerve swerve) {
-    m_autoFactory = swerve.createAutoFactory((sample, isStart) -> {
-    });
+    m_autoFactory = swerve.createAutoFactory();
   }
 
   public AutoRoutine doNothing() {

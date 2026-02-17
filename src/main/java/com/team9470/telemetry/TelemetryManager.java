@@ -19,6 +19,7 @@ import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.networktables.BooleanPublisher;
+import edu.wpi.first.networktables.DoubleArrayPublisher;
 import edu.wpi.first.networktables.DoublePublisher;
 import edu.wpi.first.networktables.IntegerPublisher;
 import edu.wpi.first.networktables.NetworkTable;
@@ -57,6 +58,32 @@ public final class TelemetryManager {
     private final StructPublisher<Pose2d> driveReefPosePublisher = driveTable.getStructTopic("ReefPose", Pose2d.struct)
             .publish();
     private final BooleanPublisher driveReefPoseValidPublisher = driveTable.getBooleanTopic("ReefPoseValid").publish();
+    private final NetworkTable driveAutoTable = driveTable.getSubTable("Auto");
+    private final BooleanPublisher driveAutoActivePublisher = driveAutoTable.getBooleanTopic("Active").publish();
+    private final DoublePublisher driveAutoLastSampleTimestampPublisher = TelemetryUtil.publishDouble(
+            driveAutoTable, "LastSampleTimestampSec", "s");
+    private final StructPublisher<Pose2d> driveAutoDesiredPosePublisher = driveAutoTable
+            .getStructTopic("DesiredPose", Pose2d.struct).publish();
+    private final StructPublisher<Pose2d> driveAutoMeasuredPosePublisher = driveAutoTable
+            .getStructTopic("MeasuredPose", Pose2d.struct).publish();
+    private final StructPublisher<Translation2d> driveAutoPoseErrorPublisher = driveAutoTable
+            .getStructTopic("PoseError", Translation2d.struct).publish();
+    private final DoublePublisher driveAutoPoseErrorNormPublisher = TelemetryUtil.publishDouble(
+            driveAutoTable, "PoseErrorNormM", "m");
+    private final DoublePublisher driveAutoHeadingErrorPublisher = TelemetryUtil.publishDouble(
+            driveAutoTable, "HeadingErrorRad", "rad");
+    private final StructPublisher<ChassisSpeeds> driveAutoFeedforwardSpeedsPublisher = driveAutoTable
+            .getStructTopic("FeedforwardSpeeds", ChassisSpeeds.struct).publish();
+    private final StructPublisher<ChassisSpeeds> driveAutoFeedbackSpeedsPublisher = driveAutoTable
+            .getStructTopic("FeedbackSpeeds", ChassisSpeeds.struct).publish();
+    private final StructPublisher<ChassisSpeeds> driveAutoCommandedSpeedsPublisher = driveAutoTable
+            .getStructTopic("CommandedSpeeds", ChassisSpeeds.struct).publish();
+    private final StructPublisher<ChassisSpeeds> driveAutoMeasuredSpeedsPublisher = driveAutoTable
+            .getStructTopic("MeasuredSpeeds", ChassisSpeeds.struct).publish();
+    private final DoubleArrayPublisher driveAutoModuleForcesXPublisher = driveAutoTable.getDoubleArrayTopic("ModuleForcesX")
+            .publish();
+    private final DoubleArrayPublisher driveAutoModuleForcesYPublisher = driveAutoTable.getDoubleArrayTopic("ModuleForcesY")
+            .publish();
 
     private final NetworkTable intakeTable = telemetryTable.getSubTable("Intake");
     private final StructPublisher<IntakeSnapshot> intakeStatePublisher = intakeTable
@@ -142,6 +169,37 @@ public final class TelemetryManager {
         }
         driveReefPosePublisher.set(reefPose);
         driveReefPoseValidPublisher.set(true);
+    }
+
+    public void publishDriveAutoPathActive(boolean active) {
+        driveAutoActivePublisher.set(active);
+    }
+
+    public void publishDriveAutoPathSample(
+            double sampleTimestampSec,
+            Pose2d desiredPose,
+            Pose2d measuredPose,
+            Translation2d poseError,
+            double headingErrorRad,
+            ChassisSpeeds feedforwardSpeeds,
+            ChassisSpeeds feedbackSpeeds,
+            ChassisSpeeds commandedSpeeds,
+            ChassisSpeeds measuredSpeeds,
+            double[] moduleForcesX,
+            double[] moduleForcesY) {
+        driveAutoActivePublisher.set(true);
+        driveAutoLastSampleTimestampPublisher.set(sampleTimestampSec);
+        driveAutoDesiredPosePublisher.set(desiredPose);
+        driveAutoMeasuredPosePublisher.set(measuredPose);
+        driveAutoPoseErrorPublisher.set(poseError);
+        driveAutoPoseErrorNormPublisher.set(poseError.getNorm());
+        driveAutoHeadingErrorPublisher.set(headingErrorRad);
+        driveAutoFeedforwardSpeedsPublisher.set(feedforwardSpeeds);
+        driveAutoFeedbackSpeedsPublisher.set(feedbackSpeeds);
+        driveAutoCommandedSpeedsPublisher.set(commandedSpeeds);
+        driveAutoMeasuredSpeedsPublisher.set(measuredSpeeds);
+        driveAutoModuleForcesXPublisher.set(moduleForcesX);
+        driveAutoModuleForcesYPublisher.set(moduleForcesY);
     }
 
     public void publishIntakeState(IntakeSnapshot snapshot) {

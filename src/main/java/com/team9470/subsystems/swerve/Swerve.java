@@ -26,6 +26,7 @@ import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Transform2d;
+import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.geometry.Twist2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics;
@@ -61,6 +62,7 @@ public class Swerve extends TunerSwerveDrivetrain implements Subsystem {
     private final Telemetry logger = new Telemetry(TunerConstants.kSpeedAt12Volts.in(MetersPerSecond));
     private final TelemetryManager telemetry = TelemetryManager.getInstance();
 
+    private static final double AUTO_PATH_SAMPLE_TIMEOUT_SEC = 0.25;
     private static final double SIM_LOOP_PERIOD = 0.005; // 5 ms
     /* Blue alliance sees forward as 0 degrees (toward red alliance wall) */
     private static final Rotation2d BLUE_ALLIANCE_PERSPECTIVE_ROTATION = Rotation2d.kZero;
@@ -139,6 +141,7 @@ public class Swerve extends TunerSwerveDrivetrain implements Subsystem {
     public int curReefPosId = -1;
 
     private double m_lastSimTime;
+    private double lastAutoPathSampleTimestampSec = Double.NEGATIVE_INFINITY;
     /* Keep track if we've ever applied the operator perspective before or not */
     private boolean m_hasAppliedOperatorPerspective = false;
     private final HashMap<Integer, TxTyPoseRecord> txTyPoses = new HashMap<>();
@@ -284,20 +287,45 @@ public class Swerve extends TunerSwerveDrivetrain implements Subsystem {
     public void followPath(SwerveSample sample) {
         pathThetaController.enableContinuousInput(-Math.PI, Math.PI);
 
-        var pose = getState().Pose;
+        var state = getState();
+        Pose2d measuredPose = state.Pose;
+        Pose2d desiredPose = new Pose2d(sample.x, sample.y, Rotation2d.fromRadians(sample.heading));
+        ChassisSpeeds feedforwardSpeeds = sample.getChassisSpeeds();
 
-        var targetSpeeds = sample.getChassisSpeeds();
-        targetSpeeds.vxMetersPerSecond += pathXController.calculate(
-                pose.getX(), sample.x);
-        targetSpeeds.vyMetersPerSecond += pathYController.calculate(
-                pose.getY(), sample.y);
-        targetSpeeds.omegaRadiansPerSecond += pathThetaController.calculate(
-                pose.getRotation().getRadians(), sample.heading);
+        double xFeedback = pathXController.calculate(measuredPose.getX(), sample.x);
+        double yFeedback = pathYController.calculate(measuredPose.getY(), sample.y);
+        double thetaFeedback = pathThetaController.calculate(
+                measuredPose.getRotation().getRadians(), sample.heading);
+
+        ChassisSpeeds feedbackSpeeds = new ChassisSpeeds(xFeedback, yFeedback, thetaFeedback);
+        ChassisSpeeds commandedSpeeds = new ChassisSpeeds(
+                feedforwardSpeeds.vxMetersPerSecond + xFeedback,
+                feedforwardSpeeds.vyMetersPerSecond + yFeedback,
+                feedforwardSpeeds.omegaRadiansPerSecond + thetaFeedback);
+        Translation2d poseError = desiredPose.getTranslation().minus(measuredPose.getTranslation());
+        double headingErrorRad = MathUtil.angleModulus(
+                desiredPose.getRotation().getRadians() - measuredPose.getRotation().getRadians());
+        double[] moduleForcesX = sample.moduleForcesX();
+        double[] moduleForcesY = sample.moduleForcesY();
+        lastAutoPathSampleTimestampSec = Timer.getTimestamp();
+
+        telemetry.publishDriveAutoPathSample(
+                lastAutoPathSampleTimestampSec,
+                desiredPose,
+                measuredPose,
+                poseError,
+                headingErrorRad,
+                feedforwardSpeeds,
+                feedbackSpeeds,
+                commandedSpeeds,
+                state.Speeds,
+                moduleForcesX,
+                moduleForcesY);
 
         setControl(
-                applyFieldSpeeds.withSpeeds(targetSpeeds)
-                        .withWheelForceFeedforwardsX(sample.moduleForcesX())
-                        .withWheelForceFeedforwardsY(sample.moduleForcesY()));
+                applyFieldSpeeds.withSpeeds(commandedSpeeds)
+                        .withWheelForceFeedforwardsX(moduleForcesX)
+                        .withWheelForceFeedforwardsY(moduleForcesY));
     }
 
     /**
@@ -325,6 +353,9 @@ public class Swerve extends TunerSwerveDrivetrain implements Subsystem {
     @Override
     public void periodic() {
         logger.telemeterize(getState());
+        boolean autoPathActive = DriverStation.isAutonomous() && DriverStation.isEnabled()
+                && (Timer.getTimestamp() - lastAutoPathSampleTimestampSec) <= AUTO_PATH_SAMPLE_TIMEOUT_SEC;
+        telemetry.publishDriveAutoPathActive(autoPathActive);
         /*
          * Periodically try to apply the operator perspective.
          * If we haven't applied the operator perspective before, then we should apply
