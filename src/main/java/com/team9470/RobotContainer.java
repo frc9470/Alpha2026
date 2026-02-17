@@ -147,8 +147,8 @@ public class RobotContainer {
               m_superstructure.getShooter().setHoodAngle(
                   ShooterConstants.launchRadToMechanismRotations(Math.toRadians(clampedHoodDeg)));
               boolean shooterAtSetpoint = m_superstructure.getShooter().isAtSetpoint();
-              m_superstructure.getIntake().setShooting(false);
-              m_superstructure.getIntake().setAgitating(true);
+              m_superstructure.getIntake().setShooting(true);
+              m_superstructure.getIntake().setAgitating(false);
               // Y debug should force-feed immediately instead of waiting for shooter readiness.
               m_superstructure.getShooter().setFiring(true);
               m_superstructure.getHopper().setRunning(true);
