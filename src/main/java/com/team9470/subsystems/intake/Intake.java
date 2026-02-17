@@ -164,17 +164,17 @@ public class Intake extends SubsystemBase {
         // --- Normal operation ---
 
         // Pivot control
-        boolean effectiveAgitating = agitating && !shooting;
+        boolean effectiveAgitating = agitating;
         boolean agitateAtDeploy = false;
         if (effectiveAgitating) {
             double t = Timer.getFPGATimestamp();
             agitateAtDeploy = Math.sin(2.0 * Math.PI * IntakeConstants.kAgitateFrequencyHz * t) >= 0.0;
         }
         Angle targetAngle;
-        if (shooting) {
-            targetAngle = IntakeConstants.kRetractAngle;
-        } else if (effectiveAgitating) {
+        if (effectiveAgitating) {
             targetAngle = agitateAtDeploy ? IntakeConstants.kDeployAngle : IntakeConstants.kAgitateMiddleAngle;
+        } else if (shooting) {
+            targetAngle = IntakeConstants.kRetractAngle;
         } else if (deployHigh) {
             targetAngle = IntakeConstants.kDeployHighAngle;
         } else if (deployed) {
@@ -198,10 +198,10 @@ public class Intake extends SubsystemBase {
         double setpointRad = IntakeConstants.pivotMechanismRotationsToAngle(targetRot).in(Radians);
 
         int stateCode;
-        if (shooting) {
-            stateCode = STATE_SHOOTING_OVERRIDE;
-        } else if (effectiveAgitating) {
+        if (effectiveAgitating) {
             stateCode = agitateAtDeploy ? STATE_AGITATE_DEPLOY : STATE_AGITATE_MID;
+        } else if (shooting) {
+            stateCode = STATE_SHOOTING_OVERRIDE;
         } else if (deployHigh) {
             stateCode = STATE_DEPLOYED_HIGH;
         } else if (deployed) {
