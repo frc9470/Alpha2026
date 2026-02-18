@@ -32,14 +32,26 @@ public class Autos {
     return routine;
   }
 
-  public AutoRoutine trenchRightAuto() {
-    AutoRoutine routine = m_autoFactory.newRoutine("trenchRightAuto");
-    AutoTrajectory trenchRightAuto = routine.trajectory("trenchRightAuto");
+  public AutoRoutine trenchRightBlue() {
+    AutoRoutine routine = m_autoFactory.newRoutine("trenchRightBlue");
+    AutoTrajectory trenchRightBlue = routine.trajectory("trenchRightBlue");
 
     routine.active().onTrue(
-        trenchRightAuto.resetOdometry()
+        trenchRightBlue.resetOdometry()
             .andThen(new InstantCommand(() -> Superstructure.getInstance().getIntake().setDeployed(true)))
-            .andThen(trenchRightAuto.cmd())
+            .andThen(trenchRightBlue.cmd())
+            .andThen(Superstructure.getInstance().aimAndShootCommand()));
+    return routine;
+  }
+
+  public AutoRoutine bumpRightBlue() {
+    AutoRoutine routine = m_autoFactory.newRoutine("bumpRightBlue");
+    AutoTrajectory bumpRightBlue = routine.trajectory("bumpRightBlue");
+
+    routine.active().onTrue(
+        bumpRightBlue.resetOdometry()
+            .andThen(new InstantCommand(() -> Superstructure.getInstance().getIntake().setDeployed(true)))
+            .andThen(bumpRightBlue.cmd())
             .andThen(Superstructure.getInstance().aimAndShootCommand()));
     return routine;
   }
