@@ -7,6 +7,8 @@ import com.team9470.telemetry.TelemetryManager;
 import com.team9470.telemetry.structs.SuperstructureSnapshot;
 import com.team9470.util.AutoAim;
 
+import com.team9470.subsystems.swerve.Swerve;
+
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -107,40 +109,6 @@ public class Superstructure extends SubsystemBase {
     }
 
     /**
-     * Shoot command - fires when aligned.
-     * Returns the target rotation rate for swerve to apply.
-     */
-    public Command shootCommand(Supplier<Double> rotationRateConsumer) {
-        return Commands.run(() -> {
-            var solution = AutoAim.calculate(poseSupplier.get(), speedsSupplier.get());
-            shooter.setSetpoint(solution);
-            intake.setShooting(true);
-            intake.setAgitating(true);
-            double rotError = solution.targetRobotYaw()
-                    .minus(poseSupplier.get().getRotation())
-                    .getRadians();
-            double rotCmd = (rotError * 12.0) + solution.targetOmega();
-
-            // Check alignment
-            boolean isAligned = Math.abs(rotError) < Math.toRadians(3.0);
-            boolean canFire = isAligned && solution.isValid() && shooter.isAtSetpoint();
-
-            // Control shooter and hopper
-            shooter.setFiring(canFire);
-            hopper.setRunning(canFire);
-
-            // Telemetry
-            publishTelemetry(isAligned, canFire, rotCmd, rotError);
-
-        }, this).finallyDo(() -> {
-            shooter.stop();
-            hopper.stop();
-            intake.setShooting(false);
-            intake.setAgitating(false);
-        }).withName("Superstructure Shoot");
-    }
-
-    /**
      * Aim and shoot command - calculates aim and returns rotation command for
      * swerve.
      * Use with swerve to get the rotation rate.
@@ -167,15 +135,28 @@ public class Superstructure extends SubsystemBase {
     }
 
     /**
-     * Command that handles shooting coordination.
-     * Call getAimResult() to get rotation command for swerve.
+     * Aim, rotate, and shoot — auto version (robot stationary, only rotates to
+     * aim).
      */
     public Command aimAndShootCommand() {
+        return aimAndShootCommand(() -> 0.0, () -> 0.0);
+    }
+
+    /**
+     * Aim, rotate, and shoot — teleop version (driver controls translation).
+     * Handles swerve rotation automatically via auto-aim.
+     *
+     * @param vxSupplier field-relative X velocity (m/s)
+     * @param vySupplier field-relative Y velocity (m/s)
+     */
+    public Command aimAndShootCommand(Supplier<Double> vxSupplier, Supplier<Double> vySupplier) {
+        Swerve swerve = Swerve.getInstance();
         return Commands.run(() -> {
             var result = getAimResult();
             shooter.setSetpoint(result.solution());
             intake.setShooting(true);
             intake.setAgitating(true);
+
             boolean canFire = result.isAligned() && result.solution().isValid() && shooter.isAtSetpoint();
             double rotError = result.solution().targetRobotYaw()
                     .minus(poseSupplier.get().getRotation())
@@ -185,14 +166,21 @@ public class Superstructure extends SubsystemBase {
             shooter.setFiring(canFire);
             hopper.setRunning(canFire);
 
+            // Drive: pass through translation, auto-aim rotation
+            swerve.setChassisSpeeds(ChassisSpeeds.fromFieldRelativeSpeeds(
+                    vxSupplier.get(), vySupplier.get(),
+                    result.rotationCommand(),
+                    swerve.getPose().getRotation()));
+
             // Telemetry
             publishTelemetry(result.isAligned(), canFire, result.rotationCommand(), rotError);
 
-        }, this).finallyDo(() -> {
+        }, this, swerve).finallyDo(() -> {
             shooter.stop();
             hopper.stop();
             intake.setShooting(false);
             intake.setAgitating(false);
+            swerve.setChassisSpeeds(new ChassisSpeeds());
         }).withName("Superstructure AimAndShoot");
     }
 

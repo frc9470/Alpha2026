@@ -17,7 +17,7 @@ import com.team9470.subsystems.Superstructure;
 import com.team9470.subsystems.shooter.ShooterConstants;
 import com.ctre.phoenix6.swerve.SwerveModule;
 import com.ctre.phoenix6.swerve.SwerveRequest;
-import edu.wpi.first.wpilibj2.command.RunCommand;
+
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import com.team9470.Constants.OperatorConstants;
 import com.team9470.subsystems.vision.Vision;
@@ -31,10 +31,6 @@ public class RobotContainer {
   // Swerve requests
   private final SwerveRequest.FieldCentric drive = new SwerveRequest.FieldCentric()
       .withDeadband(MaxSpeed * 0.1).withRotationalDeadband(MaxAngularRate * 0.1)
-      .withDriveRequestType(SwerveModule.DriveRequestType.OpenLoopVoltage);
-
-  private final SwerveRequest.FieldCentric autoAimDrive = new SwerveRequest.FieldCentric()
-      .withDeadband(MaxSpeed * 0.1).withRotationalDeadband(0.0)
       .withDriveRequestType(SwerveModule.DriveRequestType.OpenLoopVoltage);
 
   // Subsystems
@@ -78,35 +74,9 @@ public class RobotContainer {
 
     // Right Trigger: Auto-Aim & Shoot/Feed
     m_driverController.rightTrigger().whileTrue(
-        new RunCommand(() -> {
-          var aim = m_superstructure.getAimResult();
-
-          // Dynamic Swerve Limiting - prioritize rotation
-          final double kDriveRadius = 0.45;
-          double rotCost = Math.abs(aim.rotationCommand()) * kDriveRadius;
-          double transLimit = Math.max(0.0, (MaxSpeed - rotCost) * 0.80);
-
-          double vX = -m_driverController.getLeftY() * MaxSpeed;
-          double vY = -m_driverController.getLeftX() * MaxSpeed;
-
-          // Desaturate translation
-          double vMag = Math.hypot(vX, vY);
-          if (vMag > transLimit) {
-            double scale = transLimit / vMag;
-            vX *= scale;
-            vY *= scale;
-          }
-
-          telemetry.publishDriveAutoAim(true, aim.rotationCommand(), transLimit);
-
-          m_swerve.setControl(autoAimDrive
-              .withVelocityX(vX)
-              .withVelocityY(vY)
-              .withRotationalRate(aim.rotationCommand()));
-
-        }, m_swerve)
-            .alongWith(m_superstructure.aimAndShootCommand())
-            .finallyDo(() -> telemetry.publishDriveAutoAim(false, 0.0, 0.0)));
+        m_superstructure.aimAndShootCommand(
+            () -> -m_driverController.getLeftY() * MaxSpeed,
+            () -> -m_driverController.getLeftX() * MaxSpeed));
 
     // ==================== BUMPERS ====================
 
@@ -149,7 +119,8 @@ public class RobotContainer {
               boolean shooterAtSetpoint = m_superstructure.getShooter().isAtSetpoint();
               m_superstructure.getIntake().setShooting(true);
               m_superstructure.getIntake().setAgitating(true);
-              // Y debug should force-feed immediately instead of waiting for shooter readiness.
+              // Y debug should force-feed immediately instead of waiting for shooter
+              // readiness.
               m_superstructure.getShooter().setFiring(true);
               m_superstructure.getHopper().setRunning(true);
 
