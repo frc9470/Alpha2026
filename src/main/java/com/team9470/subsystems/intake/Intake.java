@@ -173,8 +173,6 @@ public class Intake extends SubsystemBase {
         Angle targetAngle;
         if (effectiveAgitating) {
             targetAngle = agitateAtDeploy ? IntakeConstants.kDeployAngle : IntakeConstants.kAgitateMiddleAngle;
-        } else if (shooting) {
-            targetAngle = IntakeConstants.kRetractAngle;
         } else if (deployHigh) {
             targetAngle = IntakeConstants.kDeployHighAngle;
         } else if (deployed) {
@@ -186,8 +184,7 @@ public class Intake extends SubsystemBase {
         pivot.setControl(mmRequest.withPosition(targetRot));
 
         // Roller control
-        double rollerVolts = shooting ? 0.0
-                : (deployed || deployHigh || effectiveAgitating) ? IntakeConstants.kRollerVoltage : 0.0;
+        double rollerVolts = (deployed || deployHigh || effectiveAgitating) ? IntakeConstants.kRollerVoltage : 0.0;
         roller.setControl(voltRequest.withOutput(rollerVolts));
 
         // --- Telemetry ---
@@ -200,8 +197,6 @@ public class Intake extends SubsystemBase {
         int stateCode;
         if (effectiveAgitating) {
             stateCode = agitateAtDeploy ? STATE_AGITATE_DEPLOY : STATE_AGITATE_MID;
-        } else if (shooting) {
-            stateCode = STATE_SHOOTING_OVERRIDE;
         } else if (deployHigh) {
             stateCode = STATE_DEPLOYED_HIGH;
         } else if (deployed) {
@@ -232,13 +227,13 @@ public class Intake extends SubsystemBase {
 
     @Override
     public void simulationPeriodic() {
-        IntakeSimulation.getInstance().update(pivot, roller, !shooting && (deployed || deployHigh || agitating));
+        IntakeSimulation.getInstance().update(pivot, roller, deployed || deployHigh || agitating);
     }
 
     // --- Accessors for physics ---
 
     public boolean isRunning() {
-        return !shooting && (deployed || deployHigh || agitating);
+        return deployed || deployHigh || agitating;
     }
 
     public boolean isDeployed() {
