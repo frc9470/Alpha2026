@@ -8,6 +8,8 @@ import choreo.auto.AutoChooser;
 import com.team9470.commands.Autos;
 import com.team9470.telemetry.TelemetryManager;
 import com.team9470.telemetry.structs.YShotSnapshot;
+import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -54,6 +56,9 @@ public class RobotContainer {
   private static final String kDebugYShotHoodDegKey = "Debug/YShot/HoodAngleDeg";
   private static final double kDebugYShotDefaultRpm = 3000.0;
   private static final double kDebugYShotDefaultHoodDeg = 30.0;
+  private static final double kIntakeHeadingLockMinSpeedMps = 0.15;
+  private static final double kIntakeHeadingLockKp = 3.5;
+  private static final double kIntakeHeadingManualOverrideDeadband = 0.10;
 
   public RobotContainer() {
     // Connect swerve context to superstructure
@@ -73,8 +78,33 @@ public class RobotContainer {
 
   private final SwerveRequest.SwerveDriveBrake xLock = new SwerveRequest.SwerveDriveBrake();
 
+  private double getDefaultDriveRotationRate(double vX, double vY, double rightXInput) {
+    double manualRotationRate = -rightXInput * MaxAngularRate;
+
+    // Heading lock is only active while the hold-intake trigger is pressed.
+    if (!m_driverController.leftTrigger().getAsBoolean()) {
+      return manualRotationRate;
+    }
+    if (Math.abs(rightXInput) > kIntakeHeadingManualOverrideDeadband) {
+      return manualRotationRate;
+    }
+
+    double speed = Math.hypot(vX, vY);
+    if (speed < kIntakeHeadingLockMinSpeedMps) {
+      return 0.0;
+    }
+
+    Rotation2d desiredHeading = new Rotation2d(vX, vY);
+    double headingErrorRad = MathUtil.angleModulus(
+        desiredHeading.minus(m_swerve.getPose().getRotation()).getRadians());
+    return MathUtil.clamp(headingErrorRad * kIntakeHeadingLockKp, -MaxAngularRate, MaxAngularRate);
+  }
+
   private void configureBindings() {
     // ==================== TRIGGERS ====================
+
+    // Left Trigger: Intake (deploy arm + run rollers while held)
+    m_driverController.leftTrigger().whileTrue(m_superstructure.intakeCommand());
 
     // Right Trigger: Auto-Aim & Shoot/Feed
     m_driverController.rightTrigger().whileTrue(
@@ -177,10 +207,15 @@ public class RobotContainer {
 
     // ==================== DEFAULT COMMANDS ====================
     m_swerve.setDefaultCommand(
-        m_swerve.applyRequest(() -> drive
-            .withVelocityX(-m_driverController.getLeftY() * MaxSpeed)
-            .withVelocityY(-m_driverController.getLeftX() * MaxSpeed)
-            .withRotationalRate(-m_driverController.getRightX() * MaxAngularRate)));
+        m_swerve.applyRequest(() -> {
+          double vX = -m_driverController.getLeftY() * MaxSpeed;
+          double vY = -m_driverController.getLeftX() * MaxSpeed;
+          double omega = getDefaultDriveRotationRate(vX, vY, m_driverController.getRightX());
+          return drive
+              .withVelocityX(vX)
+              .withVelocityY(vY)
+              .withRotationalRate(omega);
+        }));
   }
 
   private void configureAutonomous() {
