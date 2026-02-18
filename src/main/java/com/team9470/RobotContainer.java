@@ -52,6 +52,7 @@ public class RobotContainer {
   private static final String kDebugYShotHoodDegKey = "Debug/YShot/HoodAngleDeg";
   private static final double kDebugYShotDefaultRpm = 3000.0;
   private static final double kDebugYShotDefaultHoodDeg = 30.0;
+  private static final double kShootTranslationDeadband = 0.10;
   private static final double kIntakeHeadingLockMinSpeedMps = 0.15;
   private static final double kIntakeHeadingLockKp = 3.5;
   private static final double kIntakeHeadingManualOverrideDeadband = 0.10;
@@ -96,6 +97,10 @@ public class RobotContainer {
     return MathUtil.clamp(headingErrorRad * kIntakeHeadingLockKp, -MaxAngularRate, MaxAngularRate);
   }
 
+  private double getShootTranslationSpeed(double rawAxisInput) {
+    return -MathUtil.applyDeadband(rawAxisInput, kShootTranslationDeadband) * MaxSpeed;
+  }
+
   private void configureBindings() {
     // ==================== TRIGGERS ====================
 
@@ -105,8 +110,8 @@ public class RobotContainer {
     // Right Trigger: Auto-Aim & Shoot/Feed
     m_driverController.rightTrigger().whileTrue(
         m_superstructure.aimAndShootCommand(
-            () -> -m_driverController.getLeftY() * MaxSpeed,
-            () -> -m_driverController.getLeftX() * MaxSpeed));
+            () -> getShootTranslationSpeed(m_driverController.getLeftY()),
+            () -> getShootTranslationSpeed(m_driverController.getLeftX())));
 
     // ==================== BUMPERS ====================
 
