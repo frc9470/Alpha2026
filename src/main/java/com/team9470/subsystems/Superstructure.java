@@ -9,6 +9,8 @@ import com.team9470.util.AutoAim;
 
 import com.team9470.subsystems.swerve.Swerve;
 
+import com.ctre.phoenix6.swerve.SwerveModule;
+import com.ctre.phoenix6.swerve.SwerveRequest;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -151,6 +153,9 @@ public class Superstructure extends SubsystemBase {
      */
     public Command aimAndShootCommand(Supplier<Double> vxSupplier, Supplier<Double> vySupplier) {
         Swerve swerve = Swerve.getInstance();
+        // Use closed-loop velocity so commanding 0 m/s actively brakes (no drift)
+        SwerveRequest.FieldCentric aimDrive = new SwerveRequest.FieldCentric()
+                .withDriveRequestType(SwerveModule.DriveRequestType.Velocity);
         return Commands.run(() -> {
             var result = getAimResult();
             shooter.setSetpoint(result.solution());
@@ -166,11 +171,11 @@ public class Superstructure extends SubsystemBase {
             shooter.setFiring(canFire);
             hopper.setRunning(canFire);
 
-            // Drive: pass through translation, auto-aim rotation
-            swerve.setChassisSpeeds(ChassisSpeeds.fromFieldRelativeSpeeds(
-                    vxSupplier.get(), vySupplier.get(),
-                    result.rotationCommand(),
-                    swerve.getPose().getRotation()));
+            // Drive: pass through translation, auto-aim rotation (closed-loop velocity)
+            swerve.setControl(aimDrive
+                    .withVelocityX(vxSupplier.get())
+                    .withVelocityY(vySupplier.get())
+                    .withRotationalRate(result.rotationCommand()));
 
             // Telemetry
             publishTelemetry(result.isAligned(), canFire, result.rotationCommand(), rotError);
@@ -180,7 +185,7 @@ public class Superstructure extends SubsystemBase {
             hopper.stop();
             intake.setShooting(false);
             intake.setAgitating(false);
-            swerve.setChassisSpeeds(new ChassisSpeeds());
+            swerve.setControl(aimDrive.withVelocityX(0).withVelocityY(0).withRotationalRate(0));
         }).withName("Superstructure AimAndShoot");
     }
 
