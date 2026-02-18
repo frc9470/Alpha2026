@@ -32,14 +32,14 @@ public class Autos {
     return routine;
   }
 
-  public AutoRoutine centerAuto() {
-    AutoRoutine routine = m_autoFactory.newRoutine("centerAuto");
-    AutoTrajectory moveToCenter = routine.trajectory("moveToCenter");
+  public AutoRoutine trenchRightAuto() {
+    AutoRoutine routine = m_autoFactory.newRoutine("trenchRightAuto");
+    AutoTrajectory trenchRightAuto = routine.trajectory("trenchRightAuto");
 
     routine.active().onTrue(
-        moveToCenter.resetOdometry()
+        trenchRightAuto.resetOdometry()
             .andThen(new InstantCommand(() -> Superstructure.getInstance().getIntake().setDeployed(true)))
-            .andThen(moveToCenter.cmd())
+            .andThen(trenchRightAuto.cmd())
             .andThen(Superstructure.getInstance().aimAndShootCommand()));
     return routine;
   }

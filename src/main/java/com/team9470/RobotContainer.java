@@ -196,7 +196,7 @@ public class RobotContainer {
   private void configureAutonomous() {
     m_autoChooser.addRoutine("Do Nothing", m_autos::doNothing);
     m_autoChooser.addRoutine("NewPath", m_autos::newPath);
-    m_autoChooser.addRoutine("Center Auto", m_autos::centerAuto);
+    m_autoChooser.addRoutine("trenchRightAuto", m_autos::trenchRightAuto);
     m_autoChooser.select("Do Nothing");
     SmartDashboard.putData("AutoChooser", m_autoChooser);
   }
