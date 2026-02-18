@@ -78,7 +78,7 @@ public class RobotContainer {
   private double getDefaultDriveRotationRate(double vX, double vY, double rightXInput) {
     double manualRotationRate = -rightXInput * MaxAngularRate;
 
-    // Heading lock is only active while the hold-intake trigger is pressed.
+    // Heading lock is only active while left trigger is held.
     if (!m_driverController.leftTrigger().getAsBoolean()) {
       return manualRotationRate;
     }
@@ -104,8 +104,7 @@ public class RobotContainer {
   private void configureBindings() {
     // ==================== TRIGGERS ====================
 
-    // Left Trigger: Intake (deploy arm + run rollers while held)
-    m_driverController.leftTrigger().whileTrue(m_superstructure.intakeCommand());
+    // Left Trigger: Heading-lock modifier only (no intake command binding)
 
     // Right Trigger: Auto-Aim & Shoot/Feed
     m_driverController.rightTrigger().whileTrue(
