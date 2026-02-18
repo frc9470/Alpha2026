@@ -6,6 +6,7 @@ import choreo.auto.AutoTrajectory;
 
 import com.team9470.subsystems.Superstructure;
 import com.team9470.subsystems.swerve.Swerve;
+import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
 
@@ -40,6 +41,7 @@ public class Autos {
         moveToCenter.resetOdometry()
             .andThen(new InstantCommand(() -> Superstructure.getInstance().getIntake().setDeployed(true)))
             .andThen(moveToCenter.cmd())
+            .andThen(new InstantCommand(() -> Swerve.getInstance().setChassisSpeeds(new ChassisSpeeds())))
             .andThen(Superstructure.getInstance().aimAndShootCommand()));
     return routine;
   }
