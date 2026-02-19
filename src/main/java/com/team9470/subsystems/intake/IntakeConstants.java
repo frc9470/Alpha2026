@@ -27,7 +27,7 @@ public class IntakeConstants {
 
     // Current Limits
     public static final double kPivotSupplyCurrentLimit = 25.0;
-    public static final double kRollerSupplyCurrentLimit = 20.0;
+    public static final double kRollerSupplyCurrentLimit = 35.0;
 
     // ==================== HOMING ====================
     // Intake homes to hardstop at retract position (90 degrees up)

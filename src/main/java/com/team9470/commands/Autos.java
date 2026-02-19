@@ -50,9 +50,11 @@ public class Autos {
 
     routine.active().onTrue(
         bumpRightBlue.resetOdometry()
-            .andThen(new InstantCommand(() -> Superstructure.getInstance().getIntake().setDeployed(true)))
             .andThen(bumpRightBlue.cmd())
             .andThen(Superstructure.getInstance().aimAndShootCommand()));
+
+    bumpRightBlue.atTime("intakeDown")
+        .onTrue(new InstantCommand(() -> Superstructure.getInstance().getIntake().setDeployed(true)));
     return routine;
   }
 }
