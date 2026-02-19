@@ -167,9 +167,9 @@ public class Superstructure extends SubsystemBase {
                     .minus(poseSupplier.get().getRotation())
                     .getRadians();
 
-            // Control shooter and hopper based on alignment
+            // Control shooter based on alignment, but feed continuously
             shooter.setFiring(canFire);
-            hopper.setRunning(canFire);
+            hopper.setRunning(true);
 
             // Drive: pass through translation, auto-aim rotation (closed-loop velocity)
             swerve.setControl(aimDrive
