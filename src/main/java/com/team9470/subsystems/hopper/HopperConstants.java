@@ -8,7 +8,7 @@ public class HopperConstants {
         // NOTE: CAN IDs are in Ports.java (HOPPER_LEFT, HOPPER_RIGHT, HOPPER_TOP)
 
         // Control
-        public static final double kFeedVoltage = -8.0; // Voltage when feeding to shooter
+        public static final double kFeedVoltage = -12.0; // Voltage when feeding to shooter
         public static final double kRollerSupplyCurrentLimit = 25.0;
         public static final double kTopStatorCurrentLimit = 60.0;
 

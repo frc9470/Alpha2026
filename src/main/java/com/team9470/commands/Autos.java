@@ -31,7 +31,7 @@ public class Autos {
         trenchRightBlue.resetOdometry()
             .andThen(trenchRightBlue.cmd())
             .andThen(Superstructure.getInstance().aimAndShootCommand()));
-    
+
     trenchRightBlue.atTime("IntakeDown")
         .onTrue(new InstantCommand(() -> Superstructure.getInstance().getIntake().setDeployed(true)));
     trenchRightBlue.atTime("IntakeUp")
@@ -82,6 +82,16 @@ public class Autos {
 
     depotOutpostBlue.atTime("IntakeDown")
         .onTrue(new InstantCommand(() -> Superstructure.getInstance().getIntake().setDeployed(true)));
+    return routine;
+  }
+
+  public AutoRoutine figure8() {
+    AutoRoutine routine = m_autoFactory.newRoutine("figure8");
+    AutoTrajectory figure8 = routine.trajectory("testing");
+
+    routine.active().onTrue(
+        figure8.resetOdometry()
+            .andThen(figure8.cmd()));
     return routine;
   }
 }

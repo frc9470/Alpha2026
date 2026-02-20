@@ -201,8 +201,7 @@ public class RobotContainer {
     m_autoChooser.addRoutine("Do Nothing", m_autos::doNothing);
     m_autoChooser.addRoutine("trenchRightBlue", m_autos::trenchRightBlue);
     m_autoChooser.addRoutine("bumpRightBlue", m_autos::bumpRightBlue);
-    m_autoChooser.addCmd("Wheel Radius Characterization",
-        () -> new WheelRadiusCharacterization(m_swerve));
+    m_autoChooser.addRoutine("figure8", m_autos::figure8);
     m_autoChooser.select("Do Nothing");
     SmartDashboard.putData("AutoChooser", m_autoChooser);
   }
