@@ -197,8 +197,10 @@ public class RobotContainer {
   private void configureAutonomous() {
     m_autoChooser.addRoutine("Do Nothing", m_autos::doNothing);
     m_autoChooser.addRoutine("NewPath", m_autos::newPath);
-    m_autoChooser.addRoutine("trenchRightBlue", m_autos::trenchRightBlue);
-    m_autoChooser.addRoutine("bumpRightBlue", m_autos::bumpRightBlue);
+    m_autoChooser.addRoutine("Trench Center Right Blue", m_autos::trenchCenterRightBlue);
+    m_autoChooser.addRoutine("Trench Center Left Blue", m_autos::trenchCenterLeftBlue);
+    m_autoChooser.addRoutine("Bump Center Right Blue", m_autos::bumpCenterRightBlue);
+    m_autoChooser.addRoutine("Bump Center Left Blue", m_autos::bumpCenterLeftBlue);
     m_autoChooser.addCmd("Wheel Radius Characterization",
         () -> new WheelRadiusCharacterization(m_swerve));
     m_autoChooser.select("Do Nothing");
