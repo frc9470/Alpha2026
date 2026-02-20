@@ -34,7 +34,7 @@ public class RobotContainer {
   // Swerve requests
   private final SwerveRequest.FieldCentric drive = new SwerveRequest.FieldCentric()
       .withDeadband(MaxSpeed * 0.1).withRotationalDeadband(MaxAngularRate * 0.1)
-      .withDriveRequestType(SwerveModule.DriveRequestType.OpenLoopVoltage);
+      .withDriveRequestType(SwerveModule.DriveRequestType.Velocity);
 
   // Subsystems
   private final Swerve m_swerve = Swerve.getInstance();
