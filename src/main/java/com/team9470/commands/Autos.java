@@ -95,4 +95,18 @@ public class Autos {
         .onTrue(new InstantCommand(() -> Superstructure.getInstance().getIntake().setDeployed(false)));
     return routine;
   }
+
+  public AutoRoutine depotOutpostBlue() {
+    AutoRoutine routine = m_autoFactory.newRoutine("depotOutpostBlue");
+    AutoTrajectory depotOutpostBlue = routine.trajectory("depotOutpostBlue");
+
+    routine.active().onTrue(
+        depotOutpostBlue.resetOdometry()
+            .andThen(depotOutpostBlue.cmd())
+            .andThen(Superstructure.getInstance().aimAndShootCommand()));
+
+    depotOutpostBlue.atTime("IntakeDown")
+        .onTrue(new InstantCommand(() -> Superstructure.getInstance().getIntake().setDeployed(true)));
+    return routine;
+  }
 }

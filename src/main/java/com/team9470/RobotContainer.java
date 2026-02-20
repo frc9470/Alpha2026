@@ -201,6 +201,7 @@ public class RobotContainer {
     m_autoChooser.addRoutine("Trench Center Left Blue", m_autos::trenchCenterLeftBlue);
     m_autoChooser.addRoutine("Bump Center Right Blue", m_autos::bumpCenterRightBlue);
     m_autoChooser.addRoutine("Bump Center Left Blue", m_autos::bumpCenterLeftBlue);
+    m_autoChooser.addRoutine("Depot Outpost Blue", m_autos::depotOutpostBlue);
     m_autoChooser.addCmd("Wheel Radius Characterization",
         () -> new WheelRadiusCharacterization(m_swerve));
     m_autoChooser.select("Do Nothing");
