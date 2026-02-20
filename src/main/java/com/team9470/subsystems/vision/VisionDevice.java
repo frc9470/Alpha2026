@@ -61,7 +61,7 @@ public class VisionDevice {
                     photonCamera.getDistCoeffs(),
                     Optional.of(new PhotonPoseEstimator.ConstrainedSolvepnpParams(DriverStation.isDisabled(), 1)));
             if (posEstimate.isEmpty()) {
-                return;
+                continue;
             }
 
             EstimatedRobotPose estimatedPose = posEstimate.get();
@@ -70,7 +70,7 @@ public class VisionDevice {
             double timestamp = Utils.fpgaToCurrentTime(estimatedPose.timestampSeconds);
 
             if (!hasUsableTargets(result.getTargets())) {
-                return;
+                continue;
             }
 
             double std_dev_multiplier = 1.0;
@@ -86,7 +86,7 @@ public class VisionDevice {
             }
 
             if (tagPoses.isEmpty())
-                return;
+                continue;
 
             // Calculate distances and statistics
             Pair<Double, Double> distanceStats = calculateDistanceStatistics(tagPoses, cameraPose);
@@ -100,7 +100,7 @@ public class VisionDevice {
             logVisionData(tagPoses, xyStdDev, cameraPose, robotPose, timestamp, results.size(), heartbeatValue);
 
             if (Vision.getInstance().isVisionDisabled()) {
-                return;
+                continue;
             }
             // Update robot state with vision data
 

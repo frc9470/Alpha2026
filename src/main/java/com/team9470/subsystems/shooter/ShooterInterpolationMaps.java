@@ -39,6 +39,9 @@ public final class ShooterInterpolationMaps {
         addFeedPoint(4.5, 34.0, 2530.0);
         addFeedPoint(5.0, 37.0, 2780.0);
 
+        //new section
+        addFeedPoint(6.0, 39.0, 3000.0);
+
     }
 
     public static Optional<ShotParameter> getHub(double distanceMeters) {

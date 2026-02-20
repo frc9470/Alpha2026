@@ -49,7 +49,7 @@ public class TunerConstants {
         private static final ClosedLoopOutputType kSteerClosedLoopOutput = ClosedLoopOutputType.Voltage;
         // The closed-loop output type to use for the drive motors;
         // This affects the PID/FF gains for the drive motors
-        private static final ClosedLoopOutputType kDriveClosedLoopOutput = ClosedLoopOutputType.Voltage;
+        private static final ClosedLoopOutputType kDriveClosedLoopOutput = ClosedLoopOutputType.TorqueCurrentFOC;
         // The type of motor used for the drive motor
         private static final SwerveModuleConstants.DriveMotorArrangement kDriveMotorType = SwerveModuleConstants.DriveMotorArrangement.TalonFX_Integrated;
         // The type of motor used for the drive motor
@@ -99,7 +99,7 @@ public class TunerConstants {
 
         private static final double kDriveGearRatio = 6.48;
         private static final double kSteerGearRatio = 12.1;
-        private static final Distance kWheelRadius = Inches.of(2);
+        private static final Distance kWheelRadius = Inches.of(1.8658);
 
         private static final boolean kInvertLeftSide = false;
         private static final boolean kInvertRightSide = true;

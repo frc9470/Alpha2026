@@ -40,8 +40,8 @@
    "val":6.5
   },
   "radius":{
-   "exp":"2 in",
-   "val":0.0508
+   "exp":"1.8658 in",
+   "val":0.04739132
   },
   "vmax":{
    "exp":"6000 RPM",
@@ -76,7 +76,7 @@
  },
  "generationFeatures":[],
  "codegen":{
-  "root":null,
+  "root":"/Users/tycho/Projects/Alpha2026",
   "genVars":true,
   "genTrajData":true,
   "useChoreoLib":true

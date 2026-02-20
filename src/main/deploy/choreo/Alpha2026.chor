@@ -36,20 +36,20 @@
    "val":6.9377
   },
   "gearing":{
-   "exp":"6.5",
-   "val":6.5
+   "exp":"6.48",
+   "val":6.48
   },
   "radius":{
-   "exp":"2 in",
-   "val":0.0508
+   "exp":"1.8658 in",
+   "val":0.047391319999999994
   },
   "vmax":{
-   "exp":"6000 RPM",
-   "val":628.3185307179587
+   "exp":"5800 * 0.8 RPM",
+   "val":485.8996637552213
   },
   "tmax":{
-   "exp":"1.2 N * m",
-   "val":1.2
+   "exp":"1.111 N * m",
+   "val":1.111
   },
   "cof":{
    "exp":"1.5",
@@ -76,7 +76,7 @@
  },
  "generationFeatures":[],
  "codegen":{
-  "root":"Users/tycho/Projects/Alpha2026",
+  "root":"../../java/com/team9470/choreo",
   "genVars":true,
   "genTrajData":true,
   "useChoreoLib":true

@@ -16,9 +16,9 @@ import edu.wpi.first.wpilibj2.command.Command;
  * wheel radius. This accounts for wheel wear and carpet compression.
  *
  * <p>
- * <b>Usage:</b> Select as an auto routine, enable autonomous, let the robot
- * complete at least one full rotation, then disable. The measured wheel radius
- * is printed to the console.
+ * <b>Usage:</b> Bind to a held button in teleop and let the robot complete at
+ * least one full rotation. Release the button to stop. The measured wheel
+ * radius is printed to the console.
  */
 public class WheelRadiusCharacterization extends Command {
 
@@ -32,7 +32,7 @@ public class WheelRadiusCharacterization extends Command {
      * Configured wheel radius used by the drive encoders (must match
      * TunerConstants).
      */
-    private static final double CONFIGURED_WHEEL_RADIUS = Units.inchesToMeters(2.0);
+    private static final double CONFIGURED_WHEEL_RADIUS = Units.inchesToMeters(1.8658);
 
     private final Swerve swerve;
 
@@ -40,6 +40,8 @@ public class WheelRadiusCharacterization extends Command {
     private double lastGyroYawRad;
     private double gyroYawAccumRad;
     private double currentEffectiveRadius;
+    private double effectiveRadiusSum;
+    private int effectiveRadiusSamples;
 
     public WheelRadiusCharacterization(Swerve swerve) {
         this.swerve = swerve;
@@ -49,9 +51,11 @@ public class WheelRadiusCharacterization extends Command {
     @Override
     public void initialize() {
         startWheelPositions = swerve.getWheelRadiusCharacterizationPosition();
-        lastGyroYawRad = swerve.getPose().getRotation().getRadians();
+        lastGyroYawRad = swerve.getGyroHeading().getRadians();
         gyroYawAccumRad = 0.0;
         currentEffectiveRadius = 0.0;
+        effectiveRadiusSum = 0.0;
+        effectiveRadiusSamples = 0;
     }
 
     @Override
@@ -60,7 +64,7 @@ public class WheelRadiusCharacterization extends Command {
         swerve.setChassisSpeeds(new ChassisSpeeds(0.0, 0.0, CHARACTERIZATION_SPEED));
 
         // Accumulate gyro yaw (handle wraparound)
-        double currentGyroYawRad = swerve.getPose().getRotation().getRadians();
+        double currentGyroYawRad = swerve.getGyroHeading().getRadians();
         gyroYawAccumRad += MathUtil.angleModulus(currentGyroYawRad - lastGyroYawRad);
         lastGyroYawRad = currentGyroYawRad;
 
@@ -78,7 +82,10 @@ public class WheelRadiusCharacterization extends Command {
         double absGyroAccum = Math.abs(gyroYawAccumRad);
         if (absGyroAccum > 0.1 && avgWheelDelta > 0.01) {
             double avgWheelRadians = avgWheelDelta / CONFIGURED_WHEEL_RADIUS;
-            currentEffectiveRadius = (absGyroAccum * DRIVE_BASE_RADIUS) / avgWheelRadians;
+            double instantEffectiveRadius = (absGyroAccum * DRIVE_BASE_RADIUS) / avgWheelRadians;
+            effectiveRadiusSum += instantEffectiveRadius;
+            effectiveRadiusSamples++;
+            currentEffectiveRadius = effectiveRadiusSum / effectiveRadiusSamples;
         }
     }
 
@@ -92,6 +99,7 @@ public class WheelRadiusCharacterization extends Command {
             System.out.println("----------------------------------------------");
             System.out.printf("  Effective wheel radius: %.6f m%n", currentEffectiveRadius);
             System.out.printf("  Effective wheel radius: %.4f in%n", Units.metersToInches(currentEffectiveRadius));
+            System.out.printf("  Radius samples averaged: %d%n", effectiveRadiusSamples);
             System.out.printf("  Gyro accumulation: %.2f deg (%.2f rotations)%n",
                     Math.toDegrees(Math.abs(gyroYawAccumRad)),
                     Math.abs(gyroYawAccumRad) / (2.0 * Math.PI));

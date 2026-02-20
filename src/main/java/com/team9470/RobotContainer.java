@@ -132,6 +132,9 @@ public class RobotContainer {
     // Start: Toggle intake to deploy-high (+10 deg) / retract
     m_driverController.start().onTrue(m_superstructure.toggleIntakeHighCommand());
 
+    // Back: Hold to run wheel radius characterization spin test
+    m_driverController.back().whileTrue(new WheelRadiusCharacterization(m_swerve));
+
     // A: Debug - Run hopper while held
     m_driverController.a().whileTrue(m_superstructure.getHopper().runCommand());
 
@@ -196,7 +199,6 @@ public class RobotContainer {
 
   private void configureAutonomous() {
     m_autoChooser.addRoutine("Do Nothing", m_autos::doNothing);
-    m_autoChooser.addRoutine("NewPath", m_autos::newPath);
     m_autoChooser.addRoutine("trenchRightBlue", m_autos::trenchRightBlue);
     m_autoChooser.addRoutine("bumpRightBlue", m_autos::bumpRightBlue);
     m_autoChooser.addCmd("Wheel Radius Characterization",

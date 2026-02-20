@@ -18,23 +18,12 @@ public class VisionPoseAcceptor {
 	private static final AprilTagFieldLayout aprilTagFieldLayout = FieldConstants.defaultAprilTagType.getLayout();
 	private final TelemetryManager telemetry = TelemetryManager.getInstance();
 
-	Pose2d mLastVisionFieldToVehicle = null;
-
 	public boolean shouldAcceptVision(
 			double timestamp,
 			Pose2d visionFieldToVehicle,
 			Pose2d lastFieldToVehicle,
 			Twist2d robotVelocity,
 			boolean isInAuto) {
-
-		// If first update, trust
-		if (mLastVisionFieldToVehicle == null) {
-			mLastVisionFieldToVehicle = visionFieldToVehicle;
-			return true;
-		}
-
-		// Write last pose early because we return out of the method
-		mLastVisionFieldToVehicle = visionFieldToVehicle;
 
 		// Check out of field
 		if (visionFieldToVehicle.getTranslation().getX() < -FIELD_BORDER_MARGIN

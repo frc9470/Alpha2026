@@ -70,7 +70,8 @@ public class Swerve extends TunerSwerveDrivetrain implements Subsystem {
     private static final Rotation2d RED_ALLIANCE_PERSPECTIVE_ROTATION = Rotation2d.k180deg;
 
     /* Swerve requests */
-    private final SwerveRequest.ApplyFieldSpeeds applyFieldSpeeds = new SwerveRequest.ApplyFieldSpeeds();
+    private final SwerveRequest.ApplyFieldSpeeds applyFieldSpeeds = new SwerveRequest.ApplyFieldSpeeds()
+            .withDriveRequestType(SwerveModule.DriveRequestType.Velocity);
     private final PIDController pathXController = new PIDController(7, 0, 0);
     private final PIDController pathYController = new PIDController(7, 0, 0);
     private final PIDController pathThetaController = new PIDController(7, 0, 0);
@@ -401,6 +402,10 @@ public class Swerve extends TunerSwerveDrivetrain implements Subsystem {
         return getState().Pose;
     }
 
+    public Rotation2d getGyroHeading() {
+        return getState().RawHeading;
+    }
+
     public ChassisSpeeds getChassisSpeeds() {
         // Get the current swerve module states
         SwerveModuleState[] moduleStates = getState().ModuleStates;
@@ -411,8 +416,8 @@ public class Swerve extends TunerSwerveDrivetrain implements Subsystem {
     }
 
     public double[] getWheelRadiusCharacterizationPosition() {
-        return Arrays.stream(getModules())
-                .mapToDouble(module -> module.getPosition(true).distanceMeters)
+        return Arrays.stream(getState().ModulePositions)
+                .mapToDouble(position -> position.distanceMeters)
                 .toArray();
     }
 

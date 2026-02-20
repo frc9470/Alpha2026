@@ -4,6 +4,8 @@
 
 package com.team9470;
 
+import edu.wpi.first.units.Units;
+import edu.wpi.first.wpilibj.RobotController;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
@@ -15,6 +17,7 @@ public class Robot extends TimedRobot {
 
   public Robot() {
     super(0.02); // Run loop at 50Hz (Standard)
+    RobotController.setBrownoutVoltage(Units.Volts.of(4.6));
     m_robotContainer = new RobotContainer();
   }
 
