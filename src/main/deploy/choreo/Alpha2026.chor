@@ -52,8 +52,8 @@
    "val":1.111
   },
   "cof":{
-   "exp":"1.5",
-   "val":1.5
+   "exp":"1",
+   "val":1.0
   },
   "bumper":{
    "front":{
@@ -76,7 +76,7 @@
  },
  "generationFeatures":[],
  "codegen":{
-  "root":"../../java/com/team9470/choreo",
+  "root":"Users/tycho/Projects/Alpha2026",
   "genVars":true,
   "genTrajData":true,
   "useChoreoLib":true

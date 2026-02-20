@@ -14,6 +14,7 @@ import com.ctre.phoenix6.swerve.SwerveRequest;
 // import com.pathplanner.lib.config.RobotConfig;
 // import com.pathplanner.lib.controllers.PPHolonomicDriveController;
 
+import com.ctre.phoenix6.configs.Slot0Configs;
 import com.team9470.TunerConstants;
 import com.team9470.Telemetry;
 import com.team9470.TunerConstants.TunerSwerveDrivetrain;
@@ -39,6 +40,7 @@ import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.Notifier;
 import edu.wpi.first.wpilibj.RobotController;
 import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Subsystem;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
@@ -61,6 +63,14 @@ public class Swerve extends TunerSwerveDrivetrain implements Subsystem {
     private static Swerve instance;
     private final Telemetry logger = new Telemetry(TunerConstants.kSpeedAt12Volts.in(MetersPerSecond));
     private final TelemetryManager telemetry = TelemetryManager.getInstance();
+
+    // Cached SmartDashboard gain values (drive Slot0)
+    private double cachedDriveKP, cachedDriveKI, cachedDriveKD, cachedDriveKS, cachedDriveKV;
+    // Cached SmartDashboard gain values (steer Slot0)
+    private double cachedSteerKP, cachedSteerKI, cachedSteerKD, cachedSteerKS, cachedSteerKV, cachedSteerKA;
+    // Cached SmartDashboard gain values (Choreo PID)
+    private double cachedChoreoXYkP, cachedChoreoXYkI, cachedChoreoXYkD;
+    private double cachedChoreoThetakP, cachedChoreoThetakI, cachedChoreoThetakD;
 
     private static final double AUTO_PATH_SAMPLE_TIMEOUT_SEC = 0.25;
     private static final double SIM_LOOP_PERIOD = 0.005; // 5 ms
@@ -199,6 +209,50 @@ public class Swerve extends TunerSwerveDrivetrain implements Subsystem {
         // txTyPoses.put(i, new TxTyPoseRecord(new Pose2d(), Double.POSITIVE_INFINITY,
         // -1.0));
         // }
+
+        initSmartDashboardGains();
+    }
+
+    private void initSmartDashboardGains() {
+        // Drive gains from TunerConstants
+        cachedDriveKP = TunerConstants.driveGains.kP;
+        cachedDriveKI = TunerConstants.driveGains.kI;
+        cachedDriveKD = TunerConstants.driveGains.kD;
+        cachedDriveKS = TunerConstants.driveGains.kS;
+        cachedDriveKV = TunerConstants.driveGains.kV;
+        SmartDashboard.putNumber("Drive/kP", cachedDriveKP);
+        SmartDashboard.putNumber("Drive/kI", cachedDriveKI);
+        SmartDashboard.putNumber("Drive/kD", cachedDriveKD);
+        SmartDashboard.putNumber("Drive/kS", cachedDriveKS);
+        SmartDashboard.putNumber("Drive/kV", cachedDriveKV);
+
+        // Steer gains from TunerConstants
+        cachedSteerKP = TunerConstants.steerGains.kP;
+        cachedSteerKI = TunerConstants.steerGains.kI;
+        cachedSteerKD = TunerConstants.steerGains.kD;
+        cachedSteerKS = TunerConstants.steerGains.kS;
+        cachedSteerKV = TunerConstants.steerGains.kV;
+        cachedSteerKA = TunerConstants.steerGains.kA;
+        SmartDashboard.putNumber("Steer/kP", cachedSteerKP);
+        SmartDashboard.putNumber("Steer/kI", cachedSteerKI);
+        SmartDashboard.putNumber("Steer/kD", cachedSteerKD);
+        SmartDashboard.putNumber("Steer/kS", cachedSteerKS);
+        SmartDashboard.putNumber("Steer/kV", cachedSteerKV);
+        SmartDashboard.putNumber("Steer/kA", cachedSteerKA);
+
+        // Choreo path-following PID
+        cachedChoreoXYkP = pathXController.getP();
+        cachedChoreoXYkI = pathXController.getI();
+        cachedChoreoXYkD = pathXController.getD();
+        cachedChoreoThetakP = pathThetaController.getP();
+        cachedChoreoThetakI = pathThetaController.getI();
+        cachedChoreoThetakD = pathThetaController.getD();
+        SmartDashboard.putNumber("Choreo/XY_kP", cachedChoreoXYkP);
+        SmartDashboard.putNumber("Choreo/XY_kI", cachedChoreoXYkI);
+        SmartDashboard.putNumber("Choreo/XY_kD", cachedChoreoXYkD);
+        SmartDashboard.putNumber("Choreo/Theta_kP", cachedChoreoThetakP);
+        SmartDashboard.putNumber("Choreo/Theta_kI", cachedChoreoThetakI);
+        SmartDashboard.putNumber("Choreo/Theta_kD", cachedChoreoThetakD);
     }
 
     /**
@@ -391,6 +445,76 @@ public class Swerve extends TunerSwerveDrivetrain implements Subsystem {
         telemetry.publishDriveReefPose(curReefPos);
 
         // FieldConstants removed - logic commented out
+
+        updateSmartDashboardGains();
+    }
+
+    private void updateSmartDashboardGains() {
+        // --- Drive gains ---
+        double driveKP = SmartDashboard.getNumber("Drive/kP", cachedDriveKP);
+        double driveKI = SmartDashboard.getNumber("Drive/kI", cachedDriveKI);
+        double driveKD = SmartDashboard.getNumber("Drive/kD", cachedDriveKD);
+        double driveKS = SmartDashboard.getNumber("Drive/kS", cachedDriveKS);
+        double driveKV = SmartDashboard.getNumber("Drive/kV", cachedDriveKV);
+        if (driveKP != cachedDriveKP || driveKI != cachedDriveKI || driveKD != cachedDriveKD
+                || driveKS != cachedDriveKS || driveKV != cachedDriveKV) {
+            cachedDriveKP = driveKP;
+            cachedDriveKI = driveKI;
+            cachedDriveKD = driveKD;
+            cachedDriveKS = driveKS;
+            cachedDriveKV = driveKV;
+            Slot0Configs newDriveGains = new Slot0Configs()
+                    .withKP(driveKP).withKI(driveKI).withKD(driveKD)
+                    .withKS(driveKS).withKV(driveKV);
+            for (var module : getModules()) {
+                module.getDriveMotor().getConfigurator().apply(newDriveGains);
+            }
+        }
+
+        // --- Steer gains ---
+        double steerKP = SmartDashboard.getNumber("Steer/kP", cachedSteerKP);
+        double steerKI = SmartDashboard.getNumber("Steer/kI", cachedSteerKI);
+        double steerKD = SmartDashboard.getNumber("Steer/kD", cachedSteerKD);
+        double steerKS = SmartDashboard.getNumber("Steer/kS", cachedSteerKS);
+        double steerKV = SmartDashboard.getNumber("Steer/kV", cachedSteerKV);
+        double steerKA = SmartDashboard.getNumber("Steer/kA", cachedSteerKA);
+        if (steerKP != cachedSteerKP || steerKI != cachedSteerKI || steerKD != cachedSteerKD
+                || steerKS != cachedSteerKS || steerKV != cachedSteerKV || steerKA != cachedSteerKA) {
+            cachedSteerKP = steerKP;
+            cachedSteerKI = steerKI;
+            cachedSteerKD = steerKD;
+            cachedSteerKS = steerKS;
+            cachedSteerKV = steerKV;
+            cachedSteerKA = steerKA;
+            Slot0Configs newSteerGains = new Slot0Configs()
+                    .withKP(steerKP).withKI(steerKI).withKD(steerKD)
+                    .withKS(steerKS).withKV(steerKV).withKA(steerKA);
+            for (var module : getModules()) {
+                module.getSteerMotor().getConfigurator().apply(newSteerGains);
+            }
+        }
+
+        // --- Choreo PID ---
+        double choreoXYkP = SmartDashboard.getNumber("Choreo/XY_kP", cachedChoreoXYkP);
+        double choreoXYkI = SmartDashboard.getNumber("Choreo/XY_kI", cachedChoreoXYkI);
+        double choreoXYkD = SmartDashboard.getNumber("Choreo/XY_kD", cachedChoreoXYkD);
+        double choreoThetakP = SmartDashboard.getNumber("Choreo/Theta_kP", cachedChoreoThetakP);
+        double choreoThetakI = SmartDashboard.getNumber("Choreo/Theta_kI", cachedChoreoThetakI);
+        double choreoThetakD = SmartDashboard.getNumber("Choreo/Theta_kD", cachedChoreoThetakD);
+        if (choreoXYkP != cachedChoreoXYkP || choreoXYkI != cachedChoreoXYkI || choreoXYkD != cachedChoreoXYkD) {
+            cachedChoreoXYkP = choreoXYkP;
+            cachedChoreoXYkI = choreoXYkI;
+            cachedChoreoXYkD = choreoXYkD;
+            pathXController.setPID(choreoXYkP, choreoXYkI, choreoXYkD);
+            pathYController.setPID(choreoXYkP, choreoXYkI, choreoXYkD);
+        }
+        if (choreoThetakP != cachedChoreoThetakP || choreoThetakI != cachedChoreoThetakI
+                || choreoThetakD != cachedChoreoThetakD) {
+            cachedChoreoThetakP = choreoThetakP;
+            cachedChoreoThetakI = choreoThetakI;
+            cachedChoreoThetakD = choreoThetakD;
+            pathThetaController.setPID(choreoThetakP, choreoThetakI, choreoThetakD);
+        }
     }
 
     private void startSimThread() {
