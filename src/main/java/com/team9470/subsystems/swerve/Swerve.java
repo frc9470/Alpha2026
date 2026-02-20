@@ -354,6 +354,17 @@ public class Swerve extends TunerSwerveDrivetrain implements Subsystem {
     @Override
     public void periodic() {
         logger.telemeterize(getState());
+
+        var modules = getModules();
+        double[] driveVelocityRps = new double[modules.length];
+        double[] driveStatorCurrentAmps = new double[modules.length];
+        for (int i = 0; i < modules.length; i++) {
+            var driveMotor = modules[i].getDriveMotor();
+            driveVelocityRps[i] = driveMotor.getRotorVelocity().refresh().getValueAsDouble();
+            driveStatorCurrentAmps[i] = driveMotor.getStatorCurrent().refresh().getValueAsDouble();
+        }
+        telemetry.publishDriveModuleElectrical(driveVelocityRps, driveStatorCurrentAmps);
+
         boolean autoPathActive = DriverStation.isAutonomous() && DriverStation.isEnabled()
                 && (Timer.getTimestamp() - lastAutoPathSampleTimestampSec) <= AUTO_PATH_SAMPLE_TIMEOUT_SEC;
         telemetry.publishDriveAutoPathActive(autoPathActive);

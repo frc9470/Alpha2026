@@ -53,6 +53,10 @@ public final class TelemetryManager {
             .getStructArrayTopic("Modules/Targets", SwerveModuleState.struct).publish();
     private final StructArrayPublisher<SwerveModulePosition> driveModulePositionsPublisher = driveTable
             .getStructArrayTopic("Modules/Positions", SwerveModulePosition.struct).publish();
+    private final DoubleArrayPublisher driveModuleVelocityPublisher = driveTable
+            .getDoubleArrayTopic("Modules/DriveVelocityRps").publish();
+    private final DoubleArrayPublisher driveModuleStatorCurrentPublisher = driveTable
+            .getDoubleArrayTopic("Modules/DriveStatorCurrentAmps").publish();
     private final StructPublisher<DriveStatusSnapshot> driveStatusPublisher = driveTable
             .getStructTopic("Status", DriveStatusSnapshot.struct).publish();
     private final StructPublisher<Pose2d> driveReefPosePublisher = driveTable.getStructTopic("ReefPose", Pose2d.struct)
@@ -156,6 +160,11 @@ public final class TelemetryManager {
 
     public void publishDriveModulePositions(SwerveModulePosition[] positions) {
         driveModulePositionsPublisher.set(positions);
+    }
+
+    public void publishDriveModuleElectrical(double[] driveVelocityRps, double[] driveStatorCurrentAmps) {
+        driveModuleVelocityPublisher.set(driveVelocityRps);
+        driveModuleStatorCurrentPublisher.set(driveStatorCurrentAmps);
     }
 
     public void publishDriveStatus(DriveStatusSnapshot snapshot) {
