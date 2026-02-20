@@ -220,7 +220,7 @@ public class TunerConstants {
          */
         public static Swerve createDrivetrain() {
                 return new Swerve(DrivetrainConstants,
-                                200, odometryStandardDeviation, visionStandardDeviation,
+                                100, odometryStandardDeviation, visionStandardDeviation,
                                 FrontLeft, FrontRight, BackLeft, BackRight);
 
         }
