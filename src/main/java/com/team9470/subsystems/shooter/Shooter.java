@@ -150,6 +150,16 @@ public class Shooter extends SubsystemBase {
     }
 
     /**
+     * Request hood re-homing against its minimum-angle hardstop.
+     */
+    public void requestHome() {
+        targetSpeedRPS = 0.0;
+        targetHoodAngleRotations = kMinHoodAngleRotations;
+        isFiring = false;
+        needsHoming = true;
+    }
+
+    /**
      * Check if shooter is at setpoint (ready to fire).
      */
     public boolean isAtSetpoint() {

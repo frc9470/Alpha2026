@@ -184,6 +184,9 @@ public class RobotContainer {
                   false));
             }));
 
+    // Right Stick (press): Low-priority manual re-home for intake + hood
+    m_driverController.rightStick().onTrue(m_superstructure.homeIntakeAndHoodCommand());
+
     // ==================== DEFAULT COMMANDS ====================
     m_swerve.setDefaultCommand(
         m_swerve.applyRequest(() -> {

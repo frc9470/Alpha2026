@@ -18,7 +18,7 @@ public class IntakeConstants {
     public static final Angle kDeployHighAngle = Degrees.of(-20.0); // Deploy +10 deg
     public static final Angle kAgitateMiddleAngle = Degrees.of(50.0); // Slightly higher mid position for shot agitation
     public static final Angle kRetractAngle = Degrees.of(90.0); // Up/Stowed
-    public static final double kRollerVoltage = 8.0;
+    public static final double kRollerVoltage = 5.0;
     public static final double kAgitateFrequencyHz = 1.0;
 
     // Simulation
@@ -27,7 +27,7 @@ public class IntakeConstants {
 
     // Current Limits
     public static final double kPivotSupplyCurrentLimit = 25.0;
-    public static final double kRollerSupplyCurrentLimit = 35.0;
+    public static final double kRollerSupplyCurrentLimit = 30.0;
 
     // ==================== HOMING ====================
     // Intake homes to hardstop at retract position (90 degrees up)

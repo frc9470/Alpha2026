@@ -92,6 +92,17 @@ public class Intake extends SubsystemBase {
         this.shooting = shooting;
     }
 
+    /**
+     * Request intake pivot re-homing against its retract hardstop.
+     */
+    public void requestHome() {
+        deployed = false;
+        deployHigh = false;
+        agitating = false;
+        shooting = false;
+        needsHoming = true;
+    }
+
     /** Toggle deploy/retract arm position. */
     public Command getToggleCommand() {
         return this.runOnce(() -> setDeployed(!deployed))

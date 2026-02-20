@@ -17,6 +17,7 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 
 /**
@@ -111,6 +112,16 @@ public class Superstructure extends SubsystemBase {
     }
 
     /**
+     * Re-home both intake pivot and shooter hood.
+     */
+    public Command homeIntakeAndHoodCommand() {
+        return Commands.runOnce(() -> {
+            intake.requestHome();
+            shooter.requestHome();
+        }, intake, shooter).withName("Superstructure Home Intake+Hood");
+    }
+
+    /**
      * Aim and shoot command - calculates aim and returns rotation command for
      * swerve.
      * Use with swerve to get the rotation rate.
@@ -153,6 +164,7 @@ public class Superstructure extends SubsystemBase {
      */
     public Command aimAndShootCommand(Supplier<Double> vxSupplier, Supplier<Double> vySupplier) {
         Swerve swerve = Swerve.getInstance();
+        AtomicBoolean shooterReadyLatched = new AtomicBoolean(false);
         // Use closed-loop velocity so commanding 0 m/s actively brakes (no drift)
         SwerveRequest.FieldCentric aimDrive = new SwerveRequest.FieldCentric()
                 .withDriveRequestType(SwerveModule.DriveRequestType.Velocity);
@@ -162,14 +174,19 @@ public class Superstructure extends SubsystemBase {
             intake.setShooting(true);
             intake.setAgitating(true);
 
-            boolean canFire = result.isAligned() && result.solution().isValid() && shooter.isAtSetpoint();
+            boolean shooterAtSetpoint = shooter.isAtSetpoint();
+            if (shooterAtSetpoint) {
+                shooterReadyLatched.set(true);
+            }
+
+            boolean canFire = result.isAligned() && result.solution().isValid() && shooterAtSetpoint;
             double rotError = result.solution().targetRobotYaw()
                     .minus(poseSupplier.get().getRotation())
                     .getRadians();
 
-            // Control shooter based on alignment, but feed continuously
+            // Wait for initial shooter readiness, then feed continuously.
             shooter.setFiring(canFire);
-            hopper.setRunning(true);
+            hopper.setRunning(shooterReadyLatched.get());
 
             // Drive: pass through translation, auto-aim rotation (closed-loop velocity)
             swerve.setControl(aimDrive
@@ -185,8 +202,10 @@ public class Superstructure extends SubsystemBase {
             hopper.stop();
             intake.setShooting(false);
             intake.setAgitating(false);
+            shooterReadyLatched.set(false);
             swerve.setControl(aimDrive.withVelocityX(0).withVelocityY(0).withRotationalRate(0));
-        }).withName("Superstructure AimAndShoot");
+        }).beforeStarting(() -> shooterReadyLatched.set(false))
+                .withName("Superstructure AimAndShoot");
     }
 
     /**
