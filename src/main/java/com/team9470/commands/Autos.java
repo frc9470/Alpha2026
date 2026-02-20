@@ -29,9 +29,13 @@ public class Autos {
 
     routine.active().onTrue(
         trenchRightBlue.resetOdometry()
-            .andThen(new InstantCommand(() -> Superstructure.getInstance().getIntake().setDeployed(true)))
             .andThen(trenchRightBlue.cmd())
             .andThen(Superstructure.getInstance().aimAndShootCommand()));
+    
+    trenchRightBlue.atTime("IntakeDown")
+        .onTrue(new InstantCommand(() -> Superstructure.getInstance().getIntake().setDeployed(true)));
+    trenchRightBlue.atTime("IntakeUp")
+        .onTrue(new InstantCommand(() -> Superstructure.getInstance().getIntake().setDeployed(false)));
     return routine;
   }
 
@@ -44,7 +48,39 @@ public class Autos {
             .andThen(bumpRightBlue.cmd())
             .andThen(Superstructure.getInstance().aimAndShootCommand()));
 
-    bumpRightBlue.atTime("intakeDown")
+    bumpRightBlue.atTime("IntakeDown")
+        .onTrue(new InstantCommand(() -> Superstructure.getInstance().getIntake().setDeployed(true)));
+    bumpRightBlue.atTime("IntakeUp")
+        .onTrue(new InstantCommand(() -> Superstructure.getInstance().getIntake().setDeployed(false)));
+    return routine;
+  }
+
+  public AutoRoutine bumpCenterLeftBlue() {
+    AutoRoutine routine = m_autoFactory.newRoutine("bumpCenterLeftBlue");
+    AutoTrajectory bumpLeftBlue = routine.trajectory("bumpLeftBlue");
+
+    routine.active().onTrue(
+        bumpLeftBlue.resetOdometry()
+            .andThen(bumpLeftBlue.cmd())
+            .andThen(Superstructure.getInstance().aimAndShootCommand()));
+
+    bumpLeftBlue.atTime("IntakeDown")
+        .onTrue(new InstantCommand(() -> Superstructure.getInstance().getIntake().setDeployed(true)));
+    bumpLeftBlue.atTime("IntakeUp")
+        .onTrue(new InstantCommand(() -> Superstructure.getInstance().getIntake().setDeployed(false)));
+    return routine;
+  }
+
+  public AutoRoutine depotOutpostBlue() {
+    AutoRoutine routine = m_autoFactory.newRoutine("depotOutpostBlue");
+    AutoTrajectory depotOutpostBlue = routine.trajectory("depotOutpostBlue");
+
+    routine.active().onTrue(
+        depotOutpostBlue.resetOdometry()
+            .andThen(depotOutpostBlue.cmd())
+            .andThen(Superstructure.getInstance().aimAndShootCommand()));
+
+    depotOutpostBlue.atTime("IntakeDown")
         .onTrue(new InstantCommand(() -> Superstructure.getInstance().getIntake().setDeployed(true)));
     return routine;
   }

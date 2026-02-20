@@ -14,10 +14,9 @@
     {"from":"first", "to":null, "data":{"type":"StopPoint", "props":{}}, "enabled":true},
     {"from":"last", "to":null, "data":{"type":"StopPoint", "props":{}}, "enabled":true},
     {"from":"first", "to":"last", "data":{"type":"KeepInRectangle", "props":{"x":0.0, "y":0.0, "w":16.541, "h":8.0692}}, "enabled":false},
-    {"from":2, "to":3, "data":{"type":"MaxVelocity", "props":{"max":2.0}}, "enabled":true},
-    {"from":2, "to":3, "data":{"type":"PointAt", "props":{"x":8.180155754089355, "y":-2.251303195953369, "tolerance":0.017453292519943295, "flip":false}}, "enabled":true},
+    {"from":5, "to":5, "data":{"type":"MaxVelocity", "props":{"max":2.0}}, "enabled":true},
     {"from":"first", "to":"last", "data":{"type":"MaxVelocity", "props":{"max":4.0}}, "enabled":true},
-    {"from":4, "to":5, "data":{"type":"MaxAngularVelocity", "props":{"max":0.0}}, "enabled":true}],
+    {"from":6, "to":7, "data":{"type":"MaxAngularVelocity", "props":{"max":0.0}}, "enabled":true}],
   "targetDt":0.05
  },
  "params":{
@@ -33,10 +32,9 @@
     {"from":"first", "to":null, "data":{"type":"StopPoint", "props":{}}, "enabled":true},
     {"from":"last", "to":null, "data":{"type":"StopPoint", "props":{}}, "enabled":true},
     {"from":"first", "to":"last", "data":{"type":"KeepInRectangle", "props":{"x":{"exp":"0 m", "val":0.0}, "y":{"exp":"0 m", "val":0.0}, "w":{"exp":"16.541 m", "val":16.541}, "h":{"exp":"8.0692 m", "val":8.0692}}}, "enabled":false},
-    {"from":2, "to":3, "data":{"type":"MaxVelocity", "props":{"max":{"exp":"2 m / s", "val":2.0}}}, "enabled":true},
-    {"from":2, "to":3, "data":{"type":"PointAt", "props":{"x":{"exp":"8.180155754089355 m", "val":8.180155754089355}, "y":{"exp":"-2.251303195953369 m", "val":-2.251303195953369}, "tolerance":{"exp":"1 deg", "val":0.017453292519943295}, "flip":false}}, "enabled":true},
+    {"from":5, "to":5, "data":{"type":"MaxVelocity", "props":{"max":{"exp":"2 m / s", "val":2.0}}}, "enabled":true},
     {"from":"first", "to":"last", "data":{"type":"MaxVelocity", "props":{"max":{"exp":"4 m / s", "val":4.0}}}, "enabled":true},
-    {"from":4, "to":5, "data":{"type":"MaxAngularVelocity", "props":{"max":{"exp":"0 rad / s", "val":0.0}}}, "enabled":true}],
+    {"from":6, "to":7, "data":{"type":"MaxAngularVelocity", "props":{"max":{"exp":"0 rad / s", "val":0.0}}}, "enabled":true}],
   "targetDt":{
    "exp":"0.05 s",
    "val":0.05
@@ -60,9 +58,9 @@
    "tmax":1.111,
    "cof":1.5,
    "bumper":{
-    "front":0.4318,
-    "side":0.4318,
-    "back":0.5841999999999999
+    "front":0.4064,
+    "side":0.4064,
+    "back":0.4064
    },
    "differentialTrackWidth":0.5588
   },
