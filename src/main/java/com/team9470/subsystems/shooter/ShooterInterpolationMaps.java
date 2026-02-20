@@ -14,6 +14,10 @@ public final class ShooterInterpolationMaps {
     private static final InterpolatingTreeMap<InterpolatingDouble, ShotParameter> kHubMap = new InterpolatingTreeMap<>();
     private static final InterpolatingTreeMap<InterpolatingDouble, ShotParameter> kFeedMap = new InterpolatingTreeMap<>();
 
+    // Air-time (time-of-flight) map: distance (m) -> seconds.
+    // Adapted from Team Ninja's measured data; tune on-robot as needed.
+    private static final InterpolatingTreeMap<InterpolatingDouble, InterpolatingDouble> kAirTimeMap = new InterpolatingTreeMap<>();
+
     static {
 
         addHubPoint(1.0, 15.0, 1850.0);// center doesn't work
@@ -42,6 +46,23 @@ public final class ShooterInterpolationMaps {
         // new section
         addFeedPoint(6.0, 39.0, 3000.0);
 
+        // Air-time data (distance m -> seconds)
+        kAirTimeMap.put(new InterpolatingDouble(0.0), new InterpolatingDouble(0.0));
+        kAirTimeMap.put(new InterpolatingDouble(2.0), new InterpolatingDouble(0.71));
+        kAirTimeMap.put(new InterpolatingDouble(2.5), new InterpolatingDouble(0.83));
+        kAirTimeMap.put(new InterpolatingDouble(3.0), new InterpolatingDouble(1.03));
+        kAirTimeMap.put(new InterpolatingDouble(3.5), new InterpolatingDouble(1.01));
+        kAirTimeMap.put(new InterpolatingDouble(4.0), new InterpolatingDouble(1.14));
+        kAirTimeMap.put(new InterpolatingDouble(4.5), new InterpolatingDouble(1.38));
+        kAirTimeMap.put(new InterpolatingDouble(5.0), new InterpolatingDouble(1.30));
+    }
+
+    /**
+     * Returns the estimated projectile time-of-flight for a given distance.
+     */
+    public static double getAirTime(double distanceMeters) {
+        InterpolatingDouble result = kAirTimeMap.getInterpolated(new InterpolatingDouble(distanceMeters));
+        return result != null ? result.value : 0.0;
     }
 
     public static Optional<ShotParameter> getHub(double distanceMeters) {
