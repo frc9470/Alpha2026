@@ -118,8 +118,8 @@ public class RobotContainer {
     // Left Bumper: Toggle intake deployed/retracted
     m_driverController.leftBumper().onTrue(m_superstructure.toggleIntakeCommand());
 
-    // Right Bumper: Outtake (reverse rollers while held)
-    m_driverController.rightBumper().whileTrue(m_superstructure.outtakeCommand());
+    // Right Bumper: Feed (500 RPM, max hood angle)
+    m_driverController.rightBumper().whileTrue(m_superstructure.feedCommand());
 
     // ==================== FACE BUTTONS ====================
 
@@ -202,7 +202,8 @@ public class RobotContainer {
 
   private void configureAutonomous() {
     m_autoChooser.addRoutine("Do Nothing", m_autos::doNothing);
-    m_autoChooser.addRoutine("trenchRightBlue", m_autos::trenchRightBlue);
+    m_autoChooser.addRoutine("trenchRight", m_autos::trenchRight);
+    m_autoChooser.addRoutine("trenchLeft", m_autos::trenchLeft);
     m_autoChooser.addRoutine("bumpRightBlue", m_autos::bumpRightBlue);
     m_autoChooser.addRoutine("figure8", m_autos::figure8);
     m_autoChooser.select("Do Nothing");
