@@ -49,6 +49,7 @@ public class Intake extends SubsystemBase {
     private boolean deployHigh = false;
     private boolean agitating = false;
     private boolean shooting = false;
+    private double shootingStartTimestampSec = Double.NEGATIVE_INFINITY;
     private boolean needsHoming = true;
     private final TelemetryManager telemetry = TelemetryManager.getInstance();
 
@@ -89,7 +90,22 @@ public class Intake extends SubsystemBase {
     }
 
     public void setShooting(boolean shooting) {
+        if (shooting && !this.shooting) {
+            shootingStartTimestampSec = Timer.getFPGATimestamp();
+        } else if (!shooting) {
+            shootingStartTimestampSec = Double.NEGATIVE_INFINITY;
+        }
         this.shooting = shooting;
+    }
+
+    private boolean isAgitationActive() {
+        if (!agitating) {
+            return false;
+        }
+        if (!shooting) {
+            return true;
+        }
+        return Timer.getFPGATimestamp() - shootingStartTimestampSec >= IntakeConstants.kShootAgitationDelaySec;
     }
 
     /**
@@ -100,6 +116,7 @@ public class Intake extends SubsystemBase {
         deployHigh = false;
         agitating = false;
         shooting = false;
+        shootingStartTimestampSec = Double.NEGATIVE_INFINITY;
         needsHoming = true;
     }
 
@@ -175,7 +192,8 @@ public class Intake extends SubsystemBase {
         // --- Normal operation ---
 
         // Pivot control
-        boolean effectiveAgitating = agitating;
+        boolean effectiveAgitating = isAgitationActive();
+        boolean shootingDelayActive = agitating && shooting && !effectiveAgitating;
         boolean agitateAtDeploy = false;
         if (effectiveAgitating) {
             double t = Timer.getFPGATimestamp();
@@ -206,7 +224,9 @@ public class Intake extends SubsystemBase {
         double setpointRad = IntakeConstants.pivotMechanismRotationsToAngle(targetRot).in(Radians);
 
         int stateCode;
-        if (effectiveAgitating) {
+        if (shootingDelayActive) {
+            stateCode = STATE_SHOOTING_OVERRIDE;
+        } else if (effectiveAgitating) {
             stateCode = agitateAtDeploy ? STATE_AGITATE_DEPLOY : STATE_AGITATE_MID;
         } else if (deployHigh) {
             stateCode = STATE_DEPLOYED_HIGH;
@@ -238,13 +258,13 @@ public class Intake extends SubsystemBase {
 
     @Override
     public void simulationPeriodic() {
-        IntakeSimulation.getInstance().update(pivot, roller, deployed || deployHigh || agitating);
+        IntakeSimulation.getInstance().update(pivot, roller, deployed || deployHigh || isAgitationActive());
     }
 
     // --- Accessors for physics ---
 
     public boolean isRunning() {
-        return deployed || deployHigh || agitating;
+        return deployed || deployHigh || isAgitationActive();
     }
 
     public boolean isDeployed() {
