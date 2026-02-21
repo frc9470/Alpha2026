@@ -204,7 +204,7 @@ public class RobotContainer {
     m_autoChooser.addRoutine("Do Nothing", m_autos::doNothing);
     m_autoChooser.addRoutine("trenchRight", m_autos::trenchRight);
     m_autoChooser.addRoutine("trenchLeft", m_autos::trenchLeft);
-    m_autoChooser.addRoutine("bumpRightBlue", m_autos::bumpRightBlue);
+    m_autoChooser.addRoutine("bumpLeftBlue", m_autos::bumpLeftBlue);
     m_autoChooser.addRoutine("driveOverBumpTest", m_autos::driveOverBumpTest);
     m_autoChooser.select("Do Nothing");
     SmartDashboard.putData("AutoChooser", m_autoChooser);

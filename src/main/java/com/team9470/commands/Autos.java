@@ -63,7 +63,7 @@ public class Autos {
     routine.active().onTrue(
         bumpRightBlue.resetOdometry()
             .andThen(bumpRightBlue.cmd())
-            .andThen(Superstructure.getInstance().aimAndShootCommand()));
+            .andThen(Superstructure.getInstance().aimAndShootCommand().withTimeout(5)));
 
     bumpRightBlue.atTime("IntakeDown")
         .onTrue(new InstantCommand(() -> Superstructure.getInstance().getIntake().setDeployed(true)));
@@ -72,14 +72,14 @@ public class Autos {
     return routine;
   }
 
-  public AutoRoutine bumpCenterLeftBlue() {
-    AutoRoutine routine = m_autoFactory.newRoutine("bumpCenterLeftBlue");
+  public AutoRoutine bumpLeftBlue() {
+    AutoRoutine routine = m_autoFactory.newRoutine("bumpLeftBlue");
     AutoTrajectory bumpLeftBlue = routine.trajectory("bumpLeftBlue");
 
     routine.active().onTrue(
         bumpLeftBlue.resetOdometry()
             .andThen(bumpLeftBlue.cmd())
-            .andThen(Superstructure.getInstance().aimAndShootCommand()));
+            .andThen(Superstructure.getInstance().aimAndShootCommand().withTimeout(5)));
 
     bumpLeftBlue.atTime("IntakeDown")
         .onTrue(new InstantCommand(() -> Superstructure.getInstance().getIntake().setDeployed(true)));
