@@ -7,8 +7,10 @@ import com.team9470.choreo.ChoreoTraj;
 
 import com.team9470.subsystems.Superstructure;
 import com.team9470.subsystems.swerve.Swerve;
+import com.team9470.subsystems.intake.IntakeConstants;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
+import static edu.wpi.first.units.Units.Radians;
 
 public class Autos {
   private final AutoFactory m_autoFactory;
@@ -30,6 +32,8 @@ public class Autos {
     routine.active().onTrue(
         trenchRight.resetOdometry()
             .andThen(new InstantCommand(() -> Superstructure.getInstance().getIntake().setDeployed(true)))
+            .andThen(Commands.waitUntil(() -> Superstructure.getInstance().getIntake()
+                .getPivotAngle() <= IntakeConstants.kDeployAngle.in(Radians) + Math.toRadians(15)))
             .andThen(trenchRight.cmd())
             .andThen(Superstructure.getInstance().aimAndShootCommand()));
     return routine;
@@ -43,6 +47,8 @@ public class Autos {
     routine.active().onTrue(
         trenchLeft.resetOdometry()
             .andThen(new InstantCommand(() -> Superstructure.getInstance().getIntake().setDeployed(true)))
+            .andThen(Commands.waitUntil(() -> Superstructure.getInstance().getIntake()
+                .getPivotAngle() <= IntakeConstants.kDeployAngle.in(Radians) + Math.toRadians(15)))
             .andThen(trenchLeft.cmd())
             .andThen(Superstructure.getInstance().aimAndShootCommand().withTimeout(5))
             .andThen(trenchLeft2.cmd())
