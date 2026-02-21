@@ -14,7 +14,6 @@ import edu.wpi.first.math.Pair;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Transform3d;
-import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Timer;
 import org.photonvision.EstimatedRobotPose;
 import org.photonvision.PhotonCamera;
@@ -33,13 +32,7 @@ public class VisionDevice {
 
     public VisionDevice(String name, Transform3d transform) {
         this.photonCamera = new PhotonCamera(name);
-        photonPoseEstimator = new PhotonPoseEstimator(
-                aprilTagFieldLayout,
-                PhotonPoseEstimator.PoseStrategy.MULTI_TAG_PNP_ON_COPROCESSOR,
-                transform);
-
-        photonPoseEstimator.setMultiTagFallbackStrategy(PhotonPoseEstimator.PoseStrategy.LOWEST_AMBIGUITY);
-
+        photonPoseEstimator = new PhotonPoseEstimator(aprilTagFieldLayout, transform);
     }
 
     // ONLY CALL ONCE PER CAMERA PER ROBOT LOOP
@@ -55,11 +48,7 @@ public class VisionDevice {
 
         photonPoseEstimator.addHeadingData(Timer.getFPGATimestamp(), swerve.getPose().getRotation());
         for (PhotonPipelineResult result : results) {
-            // PhotonPipelineResult result = photonCamera.getLatestResult();
-            Optional<EstimatedRobotPose> posEstimate = photonPoseEstimator.update(result,
-                    photonCamera.getCameraMatrix(),
-                    photonCamera.getDistCoeffs(),
-                    Optional.of(new PhotonPoseEstimator.ConstrainedSolvepnpParams(DriverStation.isDisabled(), 1)));
+            Optional<EstimatedRobotPose> posEstimate = estimateRobotPose(result);
             if (posEstimate.isEmpty()) {
                 continue;
             }
@@ -113,6 +102,14 @@ public class VisionDevice {
             // logRotation(rotationDegrees);
 
         }
+    }
+
+    private Optional<EstimatedRobotPose> estimateRobotPose(PhotonPipelineResult result) {
+        Optional<EstimatedRobotPose> coprocessorEstimate = photonPoseEstimator.estimateCoprocMultiTagPose(result);
+        if (coprocessorEstimate.isPresent()) {
+            return coprocessorEstimate;
+        }
+        return photonPoseEstimator.estimateLowestAmbiguityPose(result);
     }
 
     static boolean hasUsableTargets(List<PhotonTrackedTarget> targets) {
