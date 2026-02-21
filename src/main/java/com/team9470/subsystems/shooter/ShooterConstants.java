@@ -67,7 +67,7 @@ public class ShooterConstants {
 
         static {
                 // Flywheel Config
-                kFlywheelConfig.Slot0.kP = .1;
+                kFlywheelConfig.Slot0.kP = .2;
                 kFlywheelConfig.Slot0.kI = 0.0;
                 kFlywheelConfig.Slot0.kD = 0.01;
                 // Velocity loop is in mechanism units (SensorToMechanismRatio is set),

@@ -44,9 +44,9 @@ public class Autos {
         trenchLeft.resetOdometry()
             .andThen(new InstantCommand(() -> Superstructure.getInstance().getIntake().setDeployed(true)))
             .andThen(trenchLeft.cmd())
-            .andThen(Superstructure.getInstance().aimAndShootCommand())
-            .andThen(Commands.waitSeconds(5))
-            .andThen(trenchLeft2.cmd()));
+            .andThen(Superstructure.getInstance().aimAndShootCommand().withTimeout(5))
+            .andThen(trenchLeft2.cmd())
+            .andThen(Superstructure.getInstance().aimAndShootCommand()));
     return routine;
   }
 
@@ -103,6 +103,16 @@ public class Autos {
     routine.active().onTrue(
         figure8.resetOdometry()
             .andThen(figure8.cmd()));
+    return routine;
+  }
+
+  public AutoRoutine driveOverBumpTest() {
+    AutoRoutine routine = m_autoFactory.newRoutine("driveOverBumpTest");
+    AutoTrajectory driveOverBumpTest = routine.trajectory("driveOverBumpTest");
+
+    routine.active().onTrue(
+        driveOverBumpTest.resetOdometry()
+            .andThen(driveOverBumpTest.cmd()));
     return routine;
   }
 }
