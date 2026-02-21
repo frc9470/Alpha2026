@@ -82,8 +82,8 @@ public class Swerve extends TunerSwerveDrivetrain implements Subsystem {
     /* Swerve requests */
     private final SwerveRequest.ApplyFieldSpeeds applyFieldSpeeds = new SwerveRequest.ApplyFieldSpeeds()
             .withDriveRequestType(SwerveModule.DriveRequestType.Velocity);
-    private final PIDController pathXController = new PIDController(7, 0, 0);
-    private final PIDController pathYController = new PIDController(7, 0, 0);
+    private final PIDController pathXController = new PIDController(10, 0, 0);
+    private final PIDController pathYController = new PIDController(10, 0, 0);
     private final PIDController pathThetaController = new PIDController(7, 0, 0);
     /* Swerve requests to apply during SysId characterization */
     private final SwerveRequest.SysIdSwerveTranslation translationCharacterization = new SwerveRequest.SysIdSwerveTranslation();

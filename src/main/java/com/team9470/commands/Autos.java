@@ -25,23 +25,19 @@ public class Autos {
 
   public AutoRoutine trenchRightBlue() {
     AutoRoutine routine = m_autoFactory.newRoutine("trenchRightBlue");
-    AutoTrajectory trenchRightBlue = ChoreoTraj.trenchRightBlue.asAutoTraj(routine);
+    AutoTrajectory trenchRightBlue = routine.trajectory("trenchRightBlue");
 
     routine.active().onTrue(
         trenchRightBlue.resetOdometry()
+            .andThen(new InstantCommand(() -> Superstructure.getInstance().getIntake().setDeployed(true)))
             .andThen(trenchRightBlue.cmd())
             .andThen(Superstructure.getInstance().aimAndShootCommand()));
-
-    trenchRightBlue.atTime("IntakeDown")
-        .onTrue(new InstantCommand(() -> Superstructure.getInstance().getIntake().setDeployed(true)));
-    trenchRightBlue.atTime("IntakeUp")
-        .onTrue(new InstantCommand(() -> Superstructure.getInstance().getIntake().setDeployed(false)));
     return routine;
   }
 
   public AutoRoutine bumpRightBlue() {
     AutoRoutine routine = m_autoFactory.newRoutine("bumpRightBlue");
-    AutoTrajectory bumpRightBlue = ChoreoTraj.bumpRightBlue.asAutoTraj(routine);
+    AutoTrajectory bumpRightBlue = routine.trajectory("bumpRightBlue");
 
     routine.active().onTrue(
         bumpRightBlue.resetOdometry()
