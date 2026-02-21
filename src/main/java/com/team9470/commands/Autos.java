@@ -38,12 +38,15 @@ public class Autos {
   public AutoRoutine trenchLeft() {
     AutoRoutine routine = m_autoFactory.newRoutine("trenchLeft");
     AutoTrajectory trenchLeft = routine.trajectory("trenchLeft");
+    AutoTrajectory trenchLeft2 = routine.trajectory("trenchLeft2");
 
     routine.active().onTrue(
         trenchLeft.resetOdometry()
             .andThen(new InstantCommand(() -> Superstructure.getInstance().getIntake().setDeployed(true)))
             .andThen(trenchLeft.cmd())
-            .andThen(Superstructure.getInstance().aimAndShootCommand()));
+            .andThen(Superstructure.getInstance().aimAndShootCommand())
+            .andThen(Commands.waitSeconds(5))
+            .andThen(trenchLeft2.cmd()));
     return routine;
   }
 

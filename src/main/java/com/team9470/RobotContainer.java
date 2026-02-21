@@ -118,8 +118,8 @@ public class RobotContainer {
     // Left Bumper: Toggle intake deployed/retracted
     m_driverController.leftBumper().onTrue(m_superstructure.toggleIntakeCommand());
 
-    // Right Bumper: Outtake (reverse rollers while held)
-    m_driverController.rightBumper().whileTrue(m_superstructure.outtakeCommand());
+    // Right Bumper: Feed (500 RPM, max hood angle)
+    m_driverController.rightBumper().whileTrue(m_superstructure.feedCommand());
 
     // ==================== FACE BUTTONS ====================
 
