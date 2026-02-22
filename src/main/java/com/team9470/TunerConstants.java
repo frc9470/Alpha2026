@@ -36,7 +36,7 @@ public class TunerConstants {
         // the
         // output type specified by SwerveModuleConstants.SteerMotorClosedLoopOutput
         public static final Slot0Configs steerGains = new Slot0Configs()
-                        .withKP(80).withKI(0).withKD(1)
+                        .withKP(100).withKI(0).withKD(1)
                         .withKS(.3).withKV(0).withKA(0)
                         .withStaticFeedforwardSign(StaticFeedforwardSignValue.UseClosedLoopSign);
         // When using closed-loop control, the drive motor uses the control
@@ -63,9 +63,9 @@ public class TunerConstants {
         private static final Current kSlipCurrent = Amps.of(100);
         // Keep drive/steer limits explicit to avoid brownouts while preserving
         // traction.
-        private static final Current kDriveStatorCurrentLimit = Amps.of(120);
-        private static final Current kSteerSupplyCurrentLimit = Amps.of(20);
-        private static final Current kSteerStatorCurrentLimit = Amps.of(25);
+        private static final Current kDriveStatorCurrentLimit = Amps.of(100);
+        private static final Current kSteerSupplyCurrentLimit = Amps.of(30);
+        private static final Current kSteerStatorCurrentLimit = Amps.of(60);
         // Initial configs for the drive and steer motors and the azimuth encoder; these
         // cannot be null.
         // Some configs will be overwritten; check the `with*InitialConfigs()` API

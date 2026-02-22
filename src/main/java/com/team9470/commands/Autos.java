@@ -28,6 +28,7 @@ public class Autos {
   public AutoRoutine trenchRight() {
     AutoRoutine routine = m_autoFactory.newRoutine("trenchRight");
     AutoTrajectory trenchRight = routine.trajectory("trenchRight");
+    AutoTrajectory trenchRight2 = routine.trajectory("trenchRight2");
 
     routine.active().onTrue(
         trenchRight.resetOdometry()
@@ -35,6 +36,8 @@ public class Autos {
             .andThen(Commands.waitUntil(() -> Superstructure.getInstance().getIntake()
                 .getPivotAngle() <= IntakeConstants.kDeployAngle.in(Radians) + Math.toRadians(15)))
             .andThen(trenchRight.cmd())
+            .andThen(Superstructure.getInstance().aimAndShootCommand().withTimeout(4.5))
+            .andThen(trenchRight2.cmd())
             .andThen(Superstructure.getInstance().aimAndShootCommand()));
     return routine;
   }
@@ -50,7 +53,7 @@ public class Autos {
             .andThen(Commands.waitUntil(() -> Superstructure.getInstance().getIntake()
                 .getPivotAngle() <= IntakeConstants.kDeployAngle.in(Radians) + Math.toRadians(15)))
             .andThen(trenchLeft.cmd())
-            .andThen(Superstructure.getInstance().aimAndShootCommand().withTimeout(5))
+            .andThen(Superstructure.getInstance().aimAndShootCommand().withTimeout(4.5))
             .andThen(trenchLeft2.cmd())
             .andThen(Superstructure.getInstance().aimAndShootCommand()));
     return routine;
