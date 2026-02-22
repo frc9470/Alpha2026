@@ -4,6 +4,7 @@ import com.team9470.telemetry.structs.AutoAimSolverSnapshot;
 import com.team9470.telemetry.structs.DriveStatusSnapshot;
 import com.team9470.telemetry.structs.HopperSnapshot;
 import com.team9470.telemetry.structs.IntakeSnapshot;
+import com.team9470.telemetry.structs.PracticeTimerSnapshot;
 import com.team9470.telemetry.structs.ShooterSnapshot;
 import com.team9470.telemetry.structs.SimSnapshot;
 import com.team9470.telemetry.structs.SuperstructureSnapshot;
@@ -26,6 +27,7 @@ import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.StructArrayPublisher;
 import edu.wpi.first.networktables.StructPublisher;
+import edu.wpi.first.networktables.StringPublisher;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -129,6 +131,30 @@ public final class TelemetryManager {
             "Drive/AutoAimTransLimitMps", "m/s");
     private final StructPublisher<YShotSnapshot> yShotPublisher = controlsTable.getStructTopic("YShot/State", YShotSnapshot.struct)
             .publish();
+
+    private final NetworkTable practiceTimerTable = telemetryTable.getSubTable("PracticeTimer");
+    private final StructPublisher<PracticeTimerSnapshot> practiceTimerStatePublisher = practiceTimerTable
+            .getStructTopic("State", PracticeTimerSnapshot.struct).publish();
+    private final IntegerPublisher practiceTimerPhaseCodePublisher = practiceTimerTable.getIntegerTopic("PhaseCode").publish();
+    private final StringPublisher practiceTimerPhaseLabelPublisher = practiceTimerTable.getStringTopic("PhaseLabel").publish();
+    private final BooleanPublisher practiceTimerActivePublisher = practiceTimerTable.getBooleanTopic("Active").publish();
+    private final BooleanPublisher practiceTimerCompletePublisher = practiceTimerTable.getBooleanTopic("Complete").publish();
+    private final DoublePublisher practiceTimerPhaseRemainingPublisher = TelemetryUtil.publishDouble(
+            practiceTimerTable, "PhaseRemainingSec", "s");
+    private final DoublePublisher practiceTimerTotalRemainingPublisher = TelemetryUtil.publishDouble(
+            practiceTimerTable, "TotalRemainingSec", "s");
+    private final IntegerPublisher practiceTimerRunIdPublisher = practiceTimerTable.getIntegerTopic("RunId").publish();
+    private final BooleanPublisher practiceTimerUsingDsMatchTimePublisher = practiceTimerTable
+            .getBooleanTopic("UsingDsMatchTime").publish();
+    private final IntegerPublisher practiceTimerZoneCodePublisher = practiceTimerTable.getIntegerTopic("ZoneCode").publish();
+    private final StringPublisher practiceTimerZoneLabelPublisher = practiceTimerTable.getStringTopic("ZoneLabel").publish();
+    private final BooleanPublisher practiceTimerZoneActivePublisher = practiceTimerTable.getBooleanTopic("ZoneActive").publish();
+    private final BooleanPublisher practiceTimerZoneKnownPublisher = practiceTimerTable.getBooleanTopic("ZoneKnown").publish();
+    private final BooleanPublisher practiceTimerEndgamePublisher = practiceTimerTable.getBooleanTopic("Endgame").publish();
+    private final DoublePublisher practiceTimerZoneRemainingPublisher = TelemetryUtil.publishDouble(
+            practiceTimerTable, "ZoneRemainingSec", "s");
+    private final DoublePublisher practiceTimerTeleopRemainingPublisher = TelemetryUtil.publishDouble(
+            practiceTimerTable, "TeleopRemainingSec", "s");
 
     private final Map<String, VisionCameraPublishers> visionCameraPublishers = new HashMap<>();
 
@@ -284,6 +310,25 @@ public final class TelemetryManager {
 
     public void publishYShotState(YShotSnapshot snapshot) {
         yShotPublisher.set(snapshot);
+    }
+
+    public void publishPracticeTimerState(PracticeTimerSnapshot snapshot, String phaseLabel, String zoneLabel) {
+        practiceTimerStatePublisher.set(snapshot);
+        practiceTimerPhaseCodePublisher.set(snapshot.phaseCode());
+        practiceTimerPhaseLabelPublisher.set(phaseLabel);
+        practiceTimerActivePublisher.set(snapshot.active());
+        practiceTimerCompletePublisher.set(snapshot.complete());
+        practiceTimerPhaseRemainingPublisher.set(snapshot.phaseRemainingSec());
+        practiceTimerTotalRemainingPublisher.set(snapshot.totalRemainingSec());
+        practiceTimerRunIdPublisher.set(snapshot.runId());
+        practiceTimerUsingDsMatchTimePublisher.set(snapshot.usingDsMatchTime());
+        practiceTimerZoneCodePublisher.set(snapshot.zoneCode());
+        practiceTimerZoneLabelPublisher.set(zoneLabel);
+        practiceTimerZoneActivePublisher.set(snapshot.zoneActive());
+        practiceTimerZoneKnownPublisher.set(snapshot.zoneKnown());
+        practiceTimerEndgamePublisher.set(snapshot.endgame());
+        practiceTimerZoneRemainingPublisher.set(snapshot.zoneRemainingSec());
+        practiceTimerTeleopRemainingPublisher.set(snapshot.teleopRemainingSec());
     }
 
     public void publishTranslation2d(String key, Translation2d translation) {

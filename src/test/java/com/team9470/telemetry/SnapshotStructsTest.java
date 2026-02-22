@@ -6,6 +6,7 @@ import com.team9470.telemetry.structs.AutoAimSolverSnapshot;
 import com.team9470.telemetry.structs.DriveStatusSnapshot;
 import com.team9470.telemetry.structs.HopperSnapshot;
 import com.team9470.telemetry.structs.IntakeSnapshot;
+import com.team9470.telemetry.structs.PracticeTimerSnapshot;
 import com.team9470.telemetry.structs.ShooterSnapshot;
 import com.team9470.telemetry.structs.SimSnapshot;
 import com.team9470.telemetry.structs.SuperstructureSnapshot;
@@ -92,5 +93,32 @@ class SnapshotStructsTest {
     @Test
     void yShotRoundTrip() {
         assertRoundTrip(YShotSnapshot.struct, new YShotSnapshot(true, 50.0, 0.6, 48.0, 0.58, true));
+    }
+
+    @Test
+    void practiceTimerRoundTrip() {
+        assertRoundTrip(PracticeTimerSnapshot.struct, new PracticeTimerSnapshot(
+                4,
+                true,
+                false,
+                true,
+                true,
+                3,
+                200.0,
+                120.0,
+                185.0,
+                10.0,
+                125.0,
+                29.0,
+                125.0,
+                125.0,
+                0,
+                2,
+                true,
+                true,
+                false,
+                20.0,
+                10.0,
+                125.0));
     }
 }

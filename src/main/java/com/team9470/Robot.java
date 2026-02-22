@@ -4,8 +4,13 @@
 
 package com.team9470;
 
+import com.team9470.telemetry.PracticeTimerTracker;
+import com.team9470.telemetry.TelemetryManager;
 import edu.wpi.first.units.Units;
+import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.DriverStation.MatchType;
 import edu.wpi.first.wpilibj.RobotController;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
@@ -14,6 +19,8 @@ public class Robot extends TimedRobot {
   private Command m_autonomousCommand;
 
   private final RobotContainer m_robotContainer;
+  private final TelemetryManager telemetry = TelemetryManager.getInstance();
+  private final PracticeTimerTracker practiceTimerTracker = new PracticeTimerTracker();
 
   public Robot() {
     super(0.02); // Run loop at 50Hz (Standard)
@@ -25,6 +32,24 @@ public class Robot extends TimedRobot {
   public void robotPeriodic() {
 
     CommandScheduler.getInstance().run();
+
+    MatchType matchType = DriverStation.getMatchType();
+    var practiceTimerOutput = practiceTimerTracker.update(new PracticeTimerTracker.DriverStationSample(
+        Timer.getFPGATimestamp(),
+        matchType,
+        DriverStation.isFMSAttached(),
+        DriverStation.isDSAttached(),
+        DriverStation.isAutonomousEnabled(),
+        DriverStation.isTeleopEnabled(),
+        DriverStation.isTestEnabled(),
+        DriverStation.isDisabled(),
+        DriverStation.getMatchTime(),
+        DriverStation.getAlliance(),
+        DriverStation.getGameSpecificMessage()));
+    telemetry.publishPracticeTimerState(
+        practiceTimerOutput.snapshot(),
+        practiceTimerOutput.phaseLabel(),
+        practiceTimerOutput.zoneLabel());
   }
 
   @Override
