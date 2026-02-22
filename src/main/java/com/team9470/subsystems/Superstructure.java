@@ -180,7 +180,7 @@ public class Superstructure extends SubsystemBase {
      * aim).
      */
     public Command aimAndShootCommand() {
-        return aimAndShootCommand(() -> 0.0, () -> 0.0);
+        return aimAndShootCommand(() -> 0.0, () -> 0.0, true);
     }
 
     /**
@@ -191,6 +191,18 @@ public class Superstructure extends SubsystemBase {
      * @param vySupplier field-relative Y velocity (m/s)
      */
     public Command aimAndShootCommand(Supplier<Double> vxSupplier, Supplier<Double> vySupplier) {
+        return aimAndShootCommand(vxSupplier, vySupplier, true);
+    }
+
+    /**
+     * Aim, rotate, and shoot — full version.
+     * Handles swerve rotation automatically via auto-aim.
+     *
+     * @param vxSupplier field-relative X velocity (m/s)
+     * @param vySupplier field-relative Y velocity (m/s)
+     * @param agitate    whether to agitate the intake during shooting
+     */
+    public Command aimAndShootCommand(Supplier<Double> vxSupplier, Supplier<Double> vySupplier, boolean agitate) {
         Swerve swerve = Swerve.getInstance();
         AtomicBoolean shooterReadyLatched = new AtomicBoolean(false);
         // Use closed-loop velocity so commanding 0 m/s actively brakes (no drift)
@@ -200,7 +212,7 @@ public class Superstructure extends SubsystemBase {
             var result = getAimResult();
             shooter.setSetpoint(result.solution());
             intake.setShooting(true);
-            intake.setAgitating(true);
+            intake.setAgitating(agitate);
 
             boolean shooterAtSetpoint = shooter.isAtSetpoint();
             if (shooterAtSetpoint) {
