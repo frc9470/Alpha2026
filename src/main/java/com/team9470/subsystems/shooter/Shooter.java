@@ -169,7 +169,7 @@ public class Shooter extends SubsystemBase {
         double currentHoodRot = getCurrentHoodRotations();
         double hoodError = Math.abs(currentHoodRot - targetHoodAngleRotations);
 
-        boolean flywheelReady = rpsError < 1; // 60 RPM
+        boolean flywheelReady = rpsError < 0.7; // 42 RPM
         boolean hoodReady = hoodError < 0.01; // ~3.6 degrees
 
         return flywheelReady && hoodReady;
