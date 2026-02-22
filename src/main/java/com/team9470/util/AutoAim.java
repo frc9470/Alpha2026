@@ -105,8 +105,17 @@ public class AutoAim {
                 Double.NaN));
     }
 
+    // Number of iterations for the SOTM lookahead convergence loop.
+    private static final int LOOKAHEAD_ITERATIONS = 5;
+
     /**
-     * Calculates the shooting solution from static distance interpolation maps.
+     * Calculates the shooting solution with Shoot-on-the-Move (SOTM) support.
+     *
+     * <p>
+     * When the robot is moving, the iterative lookahead shifts the aiming
+     * target by -(fieldVelocity × airTime) so the projectile lands at the
+     * real target position even though the robot (and therefore the shooter
+     * exit point) has moved during the time-of-flight.
      */
     public static ShootingSolution calculate(Pose2d robotPose, ChassisSpeeds robotSpeeds) {
         if (robotPose == null || robotSpeeds == null) {
@@ -117,33 +126,67 @@ public class AutoAim {
         double robotXBlueMeters = getRobotXBlueMeters(robotPose);
         AimMode mode = getAimMode(robotPose);
         boolean feedModeActive = mode == AimMode.FEED;
-        Translation3d target = getTarget(robotPose);
-        Translation2d targetXY = target.toTranslation2d();
+        Translation3d baseTarget3d = getTarget(robotPose);
+        Translation2d baseTargetXY = baseTarget3d.toTranslation2d();
 
+        // Shooter exit point on the field (accounts for robot rotation).
         Translation2d shooterOffsetXY = new Translation2d(SHOOTER_OFFSET.getX(), SHOOTER_OFFSET.getY())
                 .rotateBy(robotPose.getRotation());
         Translation2d shooterExitXY = robotPose.getTranslation().plus(shooterOffsetXY);
 
-        double distanceMeters = shooterExitXY.getDistance(targetXY);
+        // Convert chassis speeds to field-relative velocity (Translation2d).
+        ChassisSpeeds fieldSpeeds = ChassisSpeeds.fromRobotRelativeSpeeds(
+                robotSpeeds, robotPose.getRotation());
+        Translation2d fieldVelocity = new Translation2d(
+                fieldSpeeds.vxMetersPerSecond,
+                fieldSpeeds.vyMetersPerSecond);
+
+        // ---- Iterative lookahead (ported from Ninja RobotState) ----
+        // Each iteration: compute distance → look up air time → shift the
+        // virtual target by -(velocity × airTime). After convergence the
+        // shifted target already accounts for where the robot will be when
+        // the projectile arrives.
+        Translation2d lookaheadTarget = baseTargetXY;
+        for (int i = 0; i < LOOKAHEAD_ITERATIONS; i++) {
+            double dist = shooterExitXY.getDistance(lookaheadTarget);
+            double airTime = ShooterInterpolationMaps.getAirTime(dist);
+            if (!Double.isFinite(airTime) || airTime < 0.0) {
+                airTime = 0.0;
+            }
+            lookaheadTarget = baseTargetXY.minus(fieldVelocity.times(airTime));
+        }
+
+        // Distance and shot parameter lookup use the converged lookahead target.
+        double distanceMeters = shooterExitXY.getDistance(lookaheadTarget);
         Optional<ShotParameter> shotParameter = mode == AimMode.FEED
                 ? ShooterInterpolationMaps.getFeed(distanceMeters)
                 : ShooterInterpolationMaps.getHub(distanceMeters);
         publishMapTelemetry(distanceMeters, shotParameter.orElse(null), mode, feedModeActive, robotXBlueMeters);
 
-        double dx = targetXY.getX() - robotPose.getX();
-        double dy = targetXY.getY() - robotPose.getY();
+        // Yaw to converged lookahead target.
+        double dx = lookaheadTarget.getX() - robotPose.getX();
+        double dy = lookaheadTarget.getY() - robotPose.getY();
         Rotation2d targetRobotYaw = new Rotation2d(dx, dy);
 
         if (shotParameter.isEmpty() || !shotParameter.get().isValid()) {
             return new ShootingSolution(targetRobotYaw, 0.0, 0.0, 0.0, false);
         }
 
+        // ---- Angular feedforward (targetOmega) ----
+        // Approximate dθ/dt of the lookahead angle due to robot velocity so
+        // the swerve rotation controller can track the moving setpoint.
+        // For a static target, dθ/dt = (vx*dy - vy*dx) / r^2.
+        double yawDistanceMeters = Math.max(robotPose.getTranslation().getDistance(lookaheadTarget), 0.5);
+        double losAngle = targetRobotYaw.getRadians();
+        double targetOmega = (fieldVelocity.getX() * Math.sin(losAngle)
+                - fieldVelocity.getY() * Math.cos(losAngle)) / yawDistanceMeters;
+
         ShotParameter shot = shotParameter.get();
         return new ShootingSolution(
                 targetRobotYaw,
                 shot.hoodCommandDeg(),
                 shot.flywheelRpm(),
-                0.0,
+                targetOmega,
                 true);
     }
 
