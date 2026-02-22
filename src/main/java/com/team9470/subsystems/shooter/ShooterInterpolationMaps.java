@@ -37,9 +37,9 @@ public final class ShooterInterpolationMaps {
         addFeedPoint(3.5, 33.0, 2190.0);
         addFeedPoint(4.0, 34.0, 2300.0);
         addFeedPoint(4.5, 34.0, 2530.0);
-        addFeedPoint(5.0, 37.0, 2780.0);
+        addFeedPoint(5.0, 37.0, 2800.0);
 
-        //new section
+        // new section
         addFeedPoint(6.0, 39.0, 3000.0);
 
     }
