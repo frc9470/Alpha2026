@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.team9470.telemetry.PracticeTimerTracker.DriverStationSample;
 import com.team9470.telemetry.PracticeTimerTracker.Phase;
+import com.team9470.telemetry.PracticeTimerTracker.Zone;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.DriverStation.MatchType;
 import java.util.Optional;
@@ -161,5 +162,37 @@ class PracticeTimerTrackerTest {
 
         assertEquals(2, secondRun.snapshot().runId());
         assertEquals(Phase.ARMED.code(), secondRun.snapshot().phaseCode());
+    }
+
+    @Test
+    void endgameIsLastThirtySecondsOfTeleop() {
+        PracticeTimerTracker tracker = new PracticeTimerTracker();
+        tracker.update(sample(0.00, MatchType.Practice, false, false, false, true, 0.0));
+        tracker.update(sample(0.04, MatchType.Practice, true, false, false, false, 20.0));
+        tracker.update(sample(0.08, MatchType.Practice, false, false, false, true, 0.0));
+        tracker.update(sample(0.12, MatchType.Practice, false, true, false, false, 140.0));
+
+        var beforeEndgame = tracker.update(sample(1.00, MatchType.Practice, false, true, false, false, 31.0));
+        var atEndgame = tracker.update(sample(1.04, MatchType.Practice, false, true, false, false, 30.0));
+
+        assertEquals(Zone.SHIFT4.code(), beforeEndgame.snapshot().zoneCode());
+        assertFalse(beforeEndgame.snapshot().endgame());
+        assertEquals(Zone.ENDGAME.code(), atEndgame.snapshot().zoneCode());
+        assertTrue(atEndgame.snapshot().endgame());
+    }
+
+    @Test
+    void transitionZoneIsTenSecondsThenShiftOneStarts() {
+        PracticeTimerTracker tracker = new PracticeTimerTracker();
+        tracker.update(sample(0.00, MatchType.Practice, false, false, false, true, 0.0));
+        tracker.update(sample(0.04, MatchType.Practice, true, false, false, false, 20.0));
+        tracker.update(sample(0.08, MatchType.Practice, false, false, false, true, 0.0));
+        tracker.update(sample(0.12, MatchType.Practice, false, true, false, false, 140.0));
+
+        var stillTransition = tracker.update(sample(0.50, MatchType.Practice, false, true, false, false, 130.1));
+        var shiftOne = tracker.update(sample(0.54, MatchType.Practice, false, true, false, false, 130.0));
+
+        assertEquals(Zone.TRANSITION.code(), stillTransition.snapshot().zoneCode());
+        assertEquals(Zone.SHIFT1.code(), shiftOne.snapshot().zoneCode());
     }
 }

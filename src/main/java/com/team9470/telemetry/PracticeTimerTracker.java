@@ -13,13 +13,13 @@ public class PracticeTimerTracker {
     public static final int START_SOURCE_PRACTICE_EDGE = 0;
     public static final int START_SOURCE_AUTO_EDGE_FALLBACK = 1;
 
-    public static final double DEFAULT_PRESTART_SEC = 3.0;
-    public static final double DEFAULT_AUTO_SEC = 15.0;
-    public static final double DEFAULT_TRANSITION_SEC = 1.0;
-    public static final double DEFAULT_TELEOP_SEC = 135.0;
+    public static final double DEFAULT_PRESTART_SEC = 5.0;
+    public static final double DEFAULT_AUTO_SEC = 20.0;
+    public static final double DEFAULT_TRANSITION_SEC = 5.0;
+    public static final double DEFAULT_TELEOP_SEC = 140.0;
 
-    private static final double SHIFT_TRANSITION_SEC = 5.0;
-    private static final double SHIFT_WINDOW_SEC = 25.0;
+    private static final double SHIFT_TRANSITION_SEC = 10.0;
+    private static final double ENDGAME_WINDOW_SEC = 30.0;
 
     public enum Phase {
         IDLE(0, "IDLE"),
@@ -352,23 +352,34 @@ public class PracticeTimerTracker {
         }
 
         double elapsed = clamp(teleopElapsedSec, 0.0, teleopSec);
+        double endgameStartSec = Math.max(0.0, teleopSec - ENDGAME_WINDOW_SEC);
+        double preEndgameWindowSec = Math.max(0.0, endgameStartSec);
+        double shiftTransitionSec = Math.min(SHIFT_TRANSITION_SEC, preEndgameWindowSec);
+        double shiftWindowSec = preEndgameWindowSec > shiftTransitionSec
+                ? (preEndgameWindowSec - shiftTransitionSec) / 4.0
+                : 0.0;
+        double shift1EndSec = shiftTransitionSec + shiftWindowSec;
+        double shift2EndSec = shift1EndSec + shiftWindowSec;
+        double shift3EndSec = shift2EndSec + shiftWindowSec;
+        double shift4EndSec = shift3EndSec + shiftWindowSec;
+
         Zone zone;
         double zoneRemaining;
-        if (elapsed < SHIFT_TRANSITION_SEC) {
+        if (elapsed < shiftTransitionSec) {
             zone = Zone.TRANSITION;
-            zoneRemaining = SHIFT_TRANSITION_SEC - elapsed;
-        } else if (elapsed < SHIFT_TRANSITION_SEC + SHIFT_WINDOW_SEC) {
+            zoneRemaining = shiftTransitionSec - elapsed;
+        } else if (elapsed < shift1EndSec) {
             zone = Zone.SHIFT1;
-            zoneRemaining = (SHIFT_TRANSITION_SEC + SHIFT_WINDOW_SEC) - elapsed;
-        } else if (elapsed < SHIFT_TRANSITION_SEC + (2.0 * SHIFT_WINDOW_SEC)) {
+            zoneRemaining = shift1EndSec - elapsed;
+        } else if (elapsed < shift2EndSec) {
             zone = Zone.SHIFT2;
-            zoneRemaining = (SHIFT_TRANSITION_SEC + (2.0 * SHIFT_WINDOW_SEC)) - elapsed;
-        } else if (elapsed < SHIFT_TRANSITION_SEC + (3.0 * SHIFT_WINDOW_SEC)) {
+            zoneRemaining = shift2EndSec - elapsed;
+        } else if (elapsed < shift3EndSec) {
             zone = Zone.SHIFT3;
-            zoneRemaining = (SHIFT_TRANSITION_SEC + (3.0 * SHIFT_WINDOW_SEC)) - elapsed;
-        } else if (elapsed < SHIFT_TRANSITION_SEC + (4.0 * SHIFT_WINDOW_SEC)) {
+            zoneRemaining = shift3EndSec - elapsed;
+        } else if (elapsed < shift4EndSec) {
             zone = Zone.SHIFT4;
-            zoneRemaining = (SHIFT_TRANSITION_SEC + (4.0 * SHIFT_WINDOW_SEC)) - elapsed;
+            zoneRemaining = shift4EndSec - elapsed;
         } else {
             zone = Zone.ENDGAME;
             zoneRemaining = teleopRemainingSec;
