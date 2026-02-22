@@ -81,6 +81,20 @@ class PracticeTimerTrackerTest {
     }
 
     @Test
+    void transitionDisabledDoesNotAbortBeforeTeleopEnable() {
+        PracticeTimerTracker tracker = new PracticeTimerTracker();
+        tracker.update(sample(0.00, MatchType.Practice, false, false, false, true, 0.0));
+        tracker.update(sample(0.04, MatchType.Practice, true, false, false, false, 15.0));
+        tracker.update(sample(0.08, MatchType.Practice, false, false, false, true, 0.0));
+
+        var waiting = tracker.update(sample(3.00, MatchType.Practice, false, false, false, true, 0.0));
+        var teleop = tracker.update(sample(3.04, MatchType.Practice, false, true, false, false, 135.0));
+
+        assertEquals(Phase.TRANSITION.code(), waiting.snapshot().phaseCode());
+        assertEquals(Phase.TELEOP.code(), teleop.snapshot().phaseCode());
+    }
+
+    @Test
     void teleopDisableTransitionsToEndedAndLatches() {
         PracticeTimerTracker tracker = new PracticeTimerTracker();
         tracker.update(sample(0.00, MatchType.Practice, false, false, false, true, 0.0));

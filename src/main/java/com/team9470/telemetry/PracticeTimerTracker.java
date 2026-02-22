@@ -252,9 +252,6 @@ public class PracticeTimerTracker {
                     enterPhase(Phase.AUTO, sample.nowSec());
                     break;
                 }
-                if (sample.isDisabled() && phaseElapsed(sample.nowSec()) > transitionSec + 0.5) {
-                    abortRun(sample.nowSec());
-                }
             }
             case TELEOP -> {
                 if (sample.isTestEnabled()) {
