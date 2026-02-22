@@ -150,6 +150,9 @@ public class AutoAim {
         for (int i = 0; i < LOOKAHEAD_ITERATIONS; i++) {
             double dist = shooterExitXY.getDistance(lookaheadTarget);
             double airTime = ShooterInterpolationMaps.getAirTime(dist);
+            if (!Double.isFinite(airTime) || airTime < 0.0) {
+                airTime = 0.0;
+            }
             lookaheadTarget = baseTargetXY.minus(fieldVelocity.times(airTime));
         }
 
@@ -172,12 +175,11 @@ public class AutoAim {
         // ---- Angular feedforward (targetOmega) ----
         // Approximate dθ/dt of the lookahead angle due to robot velocity so
         // the swerve rotation controller can track the moving setpoint.
-        double r = Math.max(distanceMeters, 0.5); // avoid divide-by-zero
-        // Tangential velocity component perpendicular to the line-of-sight.
+        // For a static target, dθ/dt = (vx*dy - vy*dx) / r^2.
+        double yawDistanceMeters = Math.max(robotPose.getTranslation().getDistance(lookaheadTarget), 0.5);
         double losAngle = targetRobotYaw.getRadians();
-        double vPerp = -fieldVelocity.getX() * Math.sin(losAngle)
-                + fieldVelocity.getY() * Math.cos(losAngle);
-        double targetOmega = vPerp / r;
+        double targetOmega = (fieldVelocity.getX() * Math.sin(losAngle)
+                - fieldVelocity.getY() * Math.cos(losAngle)) / yawDistanceMeters;
 
         ShotParameter shot = shotParameter.get();
         return new ShootingSolution(
