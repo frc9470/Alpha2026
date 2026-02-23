@@ -63,17 +63,11 @@ public class TunerConstants {
         private static final Current kSlipCurrent = Amps.of(100);
         // Keep drive/steer limits explicit to avoid brownouts while preserving
         // traction.
-        private static final Current kDriveStatorCurrentLimit = Amps.of(100);
-        private static final Current kSteerSupplyCurrentLimit = Amps.of(30);
         private static final Current kSteerStatorCurrentLimit = Amps.of(60);
         // Initial configs for the drive and steer motors and the azimuth encoder; these
         // cannot be null.
         // Some configs will be overwritten; check the `with*InitialConfigs()` API
         // documentation.
-        private static final TalonFXConfiguration driveInitialConfigs = new TalonFXConfiguration()
-                        .withCurrentLimits(
-                                        new CurrentLimitsConfigs().withStatorCurrentLimit(kDriveStatorCurrentLimit)
-                                                        .withStatorCurrentLimitEnable(true));
         private static final TalonFXConfiguration steerInitialConfigs = new TalonFXConfiguration()
                         .withCurrentLimits(
                                         new CurrentLimitsConfigs()
@@ -81,8 +75,6 @@ public class TunerConstants {
                                                         // set a relatively low
                                                         // stator current limit to help avoid brownouts without
                                                         // impacting performance.
-                                                        .withSupplyCurrentLimit(kSteerSupplyCurrentLimit)
-                                                        .withSupplyCurrentLimitEnable(true)
                                                         .withStatorCurrentLimit(kSteerStatorCurrentLimit)
                                                         .withStatorCurrentLimitEnable(true));
         private static final CANcoderConfiguration encoderInitialConfigs = new CANcoderConfiguration();
