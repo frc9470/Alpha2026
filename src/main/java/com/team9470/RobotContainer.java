@@ -111,7 +111,8 @@ public class RobotContainer {
     m_driverController.rightTrigger().whileTrue(
         m_superstructure.aimAndShootCommand(
             () -> getShootTranslationSpeed(m_driverController.getLeftY()),
-            () -> getShootTranslationSpeed(m_driverController.getLeftX())));
+            () -> getShootTranslationSpeed(m_driverController.getLeftX()),
+            true));
 
     // ==================== BUMPERS ====================
 
@@ -132,7 +133,6 @@ public class RobotContainer {
             () -> getShootTranslationSpeed(m_driverController.getLeftY()),
             () -> getShootTranslationSpeed(m_driverController.getLeftX()),
             false));
-
     // Start: Toggle intake to deploy-high (+10 deg) / retract
     m_driverController.start().onTrue(m_superstructure.toggleIntakeHighCommand());
 
