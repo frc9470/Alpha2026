@@ -249,6 +249,40 @@ public class Superstructure extends SubsystemBase {
     }
 
     /**
+     * Shoot without auto-aligning — uses AutoAim to set flywheel/hood but does
+     * NOT control swerve rotation. The driver retains full manual drivetrain
+     * control.
+     */
+    public Command shootNoAlignCommand() {
+        AtomicBoolean shooterReadyLatched = new AtomicBoolean(false);
+        return Commands.run(() -> {
+            var result = getAimResult();
+            shooter.setSetpoint(result.solution());
+            intake.setShooting(true);
+            intake.setAgitating(true);
+
+            boolean shooterAtSetpoint = shooter.isAtSetpoint();
+            if (shooterAtSetpoint) {
+                shooterReadyLatched.set(true);
+            }
+
+            boolean canFire = result.solution().isValid() && shooterAtSetpoint;
+
+            shooter.setFiring(canFire);
+            hopper.setRunning(shooterReadyLatched.get());
+
+            publishTelemetry(false, canFire, 0.0, 0.0);
+        }, this).finallyDo(() -> {
+            shooter.stop();
+            hopper.stop();
+            intake.setShooting(false);
+            intake.setAgitating(false);
+            shooterReadyLatched.set(false);
+        }).beforeStarting(() -> shooterReadyLatched.set(false))
+                .withName("Superstructure ShootNoAlign");
+    }
+
+    /**
      * Idle command - stops all mechanisms.
      */
     public Command idleCommand() {

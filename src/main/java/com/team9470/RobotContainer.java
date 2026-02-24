@@ -105,7 +105,9 @@ public class RobotContainer {
   private void configureBindings() {
     // ==================== TRIGGERS ====================
 
-    // Left Trigger: Heading-lock modifier only (no intake command binding)
+    // Left Trigger: Shoot without auto-align (uses AutoAim setpoint but no swerve
+    // rotation override)
+    m_driverController.leftTrigger().whileTrue(m_superstructure.shootNoAlignCommand());
 
     // Right Trigger: Auto-Aim & Shoot/Feed
     m_driverController.rightTrigger().whileTrue(
