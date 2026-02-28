@@ -3,7 +3,6 @@ package com.team9470.commands;
 import choreo.auto.AutoFactory;
 import choreo.auto.AutoRoutine;
 import choreo.auto.AutoTrajectory;
-import com.team9470.choreo.ChoreoTraj;
 
 import com.team9470.subsystems.Superstructure;
 import com.team9470.subsystems.swerve.Swerve;
@@ -27,8 +26,8 @@ public class Autos {
 
   public AutoRoutine trenchRight() {
     AutoRoutine routine = m_autoFactory.newRoutine("trenchRight");
-    AutoTrajectory trenchRight = routine.trajectory("trenchRight");
-    AutoTrajectory trenchRight2 = routine.trajectory("trenchRight2");
+    AutoTrajectory trenchRight = routine.trajectory("trenchRightCycle1");
+    AutoTrajectory trenchRight2 = routine.trajectory("trenchRightCycle2");
 
     routine.active().onTrue(
         trenchRight.resetOdometry()
@@ -42,10 +41,27 @@ public class Autos {
     return routine;
   }
 
-  public AutoRoutine trenchLeft() {
-    AutoRoutine routine = m_autoFactory.newRoutine("trenchLeft");
-    AutoTrajectory trenchLeft = routine.trajectory("trenchLeft");
-    AutoTrajectory trenchLeft2 = routine.trajectory("trenchLeft2");
+  public AutoRoutine trenchLeftStable() {
+    AutoRoutine routine = m_autoFactory.newRoutine("trenchLeftStable");
+    AutoTrajectory trenchLeft = routine.trajectory("trenchLeftCycle1");
+    AutoTrajectory trenchLeft2 = routine.trajectory("trenchLeftCycle2Stable");
+
+    routine.active().onTrue(
+        trenchLeft.resetOdometry()
+            .andThen(new InstantCommand(() -> Superstructure.getInstance().getIntake().setDeployed(true)))
+            .andThen(Commands.waitUntil(() -> Superstructure.getInstance().getIntake()
+                .getPivotAngle() <= IntakeConstants.kDeployAngle.in(Radians) + Math.toRadians(15)))
+            .andThen(trenchLeft.cmd())
+            .andThen(Superstructure.getInstance().aimAndShootCommand().withTimeout(4.5))
+            .andThen(trenchLeft2.cmd())
+            .andThen(Superstructure.getInstance().aimAndShootCommand()));
+    return routine;
+  }
+
+  public AutoRoutine trenchLeftPrototype() {
+    AutoRoutine routine = m_autoFactory.newRoutine("trenchLeftPrototype");
+    AutoTrajectory trenchLeft = routine.trajectory("trenchLeftCycle1");
+    AutoTrajectory trenchLeft2 = routine.trajectory("trenchLeftCycle2Prototype");
 
     routine.active().onTrue(
         trenchLeft.resetOdometry()

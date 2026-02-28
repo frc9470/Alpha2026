@@ -105,7 +105,8 @@ public class RobotContainer {
   private void configureBindings() {
     // ==================== TRIGGERS ====================
 
-    // Left Trigger: Shoot without auto-align (uses AutoAim setpoint but no swerve rotation override)
+    // Left Trigger: Shoot without auto-align (uses AutoAim setpoint but no swerve
+    // rotation override)
     m_driverController.leftTrigger().whileTrue(m_superstructure.shootNoAlignCommand());
 
     // Right Trigger: Auto-Aim & Shoot/Feed
@@ -208,7 +209,8 @@ public class RobotContainer {
   private void configureAutonomous() {
     m_autoChooser.addRoutine("Do Nothing", m_autos::doNothing);
     m_autoChooser.addRoutine("trenchRight", m_autos::trenchRight);
-    m_autoChooser.addRoutine("trenchLeft", m_autos::trenchLeft);
+    m_autoChooser.addRoutine("trenchLeftStable", m_autos::trenchLeftStable);
+    m_autoChooser.addRoutine("trenchLeftPrototype", m_autos::trenchLeftPrototype);
     m_autoChooser.addRoutine("bumpLeftBlue", m_autos::bumpLeftBlue);
     m_autoChooser.addRoutine("driveOverBumpTest", m_autos::driveOverBumpTest);
     m_autoChooser.select("Do Nothing");
