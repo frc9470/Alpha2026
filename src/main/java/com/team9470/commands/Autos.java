@@ -26,8 +26,8 @@ public class Autos {
 
   public AutoRoutine trenchRight() {
     AutoRoutine routine = m_autoFactory.newRoutine("trenchRight");
-    AutoTrajectory trenchRight = routine.trajectory("trenchRightCycle1");
-    AutoTrajectory trenchRight2 = routine.trajectory("trenchRightCycle2");
+    AutoTrajectory trenchRight = routine.trajectory("rightTrenchCycle1");
+    AutoTrajectory trenchRight2 = routine.trajectory("rightTrenchCycle2");
 
     routine.active().onTrue(
         trenchRight.resetOdometry()
@@ -41,27 +41,27 @@ public class Autos {
     return routine;
   }
 
-  public AutoRoutine trenchLeftStable() {
-    AutoRoutine routine = m_autoFactory.newRoutine("trenchLeftStable");
-    AutoTrajectory trenchLeft = routine.trajectory("trenchLeftCycle1");
-    AutoTrajectory trenchLeft2 = routine.trajectory("trenchLeftCycle2Stable");
+  public AutoRoutine leftTrenchStable() {
+    AutoRoutine routine = m_autoFactory.newRoutine("leftTrenchStable");
+    AutoTrajectory leftTrench = routine.trajectory("leftTrenchCycle1");
+    AutoTrajectory leftTrench2 = routine.trajectory("leftTrenchCycle2Stable");
 
     routine.active().onTrue(
-        trenchLeft.resetOdometry()
+        leftTrench.resetOdometry()
             .andThen(new InstantCommand(() -> Superstructure.getInstance().getIntake().setDeployed(true)))
             .andThen(Commands.waitUntil(() -> Superstructure.getInstance().getIntake()
                 .getPivotAngle() <= IntakeConstants.kDeployAngle.in(Radians) + Math.toRadians(15)))
-            .andThen(trenchLeft.cmd())
+            .andThen(leftTrench.cmd())
             .andThen(Superstructure.getInstance().aimAndShootCommand().withTimeout(4.5))
-            .andThen(trenchLeft2.cmd())
+            .andThen(leftTrench2.cmd())
             .andThen(Superstructure.getInstance().aimAndShootCommand()));
     return routine;
   }
 
   public AutoRoutine trenchLeftPrototype() {
     AutoRoutine routine = m_autoFactory.newRoutine("trenchLeftPrototype");
-    AutoTrajectory trenchLeft = routine.trajectory("trenchLeftCycle1");
-    AutoTrajectory trenchLeft2 = routine.trajectory("trenchLeftCycle2Prototype");
+    AutoTrajectory trenchLeft = routine.trajectory("leftTrenchCycle1");
+    AutoTrajectory trenchLeft2 = routine.trajectory("leftTrenchCycle2Prototype");
 
     routine.active().onTrue(
         trenchLeft.resetOdometry()

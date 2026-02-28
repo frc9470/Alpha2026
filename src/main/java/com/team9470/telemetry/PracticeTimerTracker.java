@@ -6,7 +6,8 @@ import edu.wpi.first.wpilibj.DriverStation.MatchType;
 import java.util.Optional;
 
 /**
- * Tracks DS-driven practice mode phases and publishes a dashboard-friendly snapshot each loop.
+ * Tracks DS-driven practice mode phases and publishes a dashboard-friendly
+ * snapshot each loop.
  */
 public class PracticeTimerTracker {
     public static final int START_SOURCE_NONE = -1;
@@ -15,7 +16,7 @@ public class PracticeTimerTracker {
 
     public static final double DEFAULT_PRESTART_SEC = 5.0;
     public static final double DEFAULT_AUTO_SEC = 20.0;
-    public static final double DEFAULT_TRANSITION_SEC = 5.0;
+    public static final double DEFAULT_TRANSITION_SEC = 3.0;
     public static final double DEFAULT_TELEOP_SEC = 140.0;
 
     private static final double SHIFT_TRANSITION_SEC = 10.0;
@@ -342,7 +343,8 @@ public class PracticeTimerTracker {
                 sample.matchTimeSec());
     }
 
-    private ZoneTiming computeZoneTiming(DriverStationSample sample, double teleopElapsedSec, double teleopRemainingSec) {
+    private ZoneTiming computeZoneTiming(DriverStationSample sample, double teleopElapsedSec,
+            double teleopRemainingSec) {
         if (phase != Phase.TELEOP && phase != Phase.ENDED) {
             return new ZoneTiming(Zone.NONE, false, false, false, 0.0);
         }
