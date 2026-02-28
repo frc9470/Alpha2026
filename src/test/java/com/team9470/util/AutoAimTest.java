@@ -17,6 +17,10 @@ class AutoAimTest {
                 new Rotation2d());
     }
 
+    private static Pose2d feedPose(double yMeters) {
+        return new Pose2d(6.0, yMeters, new Rotation2d());
+    }
+
     @Test
     void stationaryRobotProducesZeroTargetOmega() {
         var solution = AutoAim.calculate(hubAlignedPose(), new ChassisSpeeds());
@@ -35,5 +39,23 @@ class AutoAimTest {
                 moving.targetRobotYaw().getRadians() < stationary.targetRobotYaw().getRadians() - 1e-4,
                 "Lookahead should bias yaw clockwise when the robot strafes left");
         assertTrue(moving.targetOmega() < 0.0, "Angular feedforward should also command clockwise rotation");
+    }
+
+    @Test
+    void defaultFeedTargetStaysLeftSide() {
+        var leftPoseTarget = AutoAim.getTarget(feedPose(FieldConstants.fieldWidth - 1.0));
+        var rightPoseTarget = AutoAim.getTarget(feedPose(1.0));
+
+        assertEquals(leftPoseTarget.getY(), rightPoseTarget.getY(), 1e-9);
+        assertTrue(leftPoseTarget.getY() > FieldConstants.LinesHorizontal.center);
+    }
+
+    @Test
+    void dynamicFeedTargetFollowsRobotSide() {
+        var leftPoseTarget = AutoAim.getTarget(feedPose(FieldConstants.fieldWidth - 1.0), true);
+        var rightPoseTarget = AutoAim.getTarget(feedPose(1.0), true);
+
+        assertTrue(leftPoseTarget.getY() > FieldConstants.LinesHorizontal.center);
+        assertTrue(rightPoseTarget.getY() < FieldConstants.LinesHorizontal.center);
     }
 }

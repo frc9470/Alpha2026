@@ -121,20 +121,20 @@ public class RobotContainer {
     // Left Bumper: Toggle intake deployed/retracted
     m_driverController.leftBumper().onTrue(m_superstructure.toggleIntakeCommand());
 
-    // Right Bumper: Feed (500 RPM, max hood angle)
-    m_driverController.rightBumper().whileTrue(m_superstructure.feedCommand());
+    // Right Bumper: Aim and shoot WITHOUT intake agitation
+    m_driverController.rightBumper().whileTrue(
+        m_superstructure.aimAndShootCommand(
+            () -> getShootTranslationSpeed(m_driverController.getLeftY()),
+            () -> getShootTranslationSpeed(m_driverController.getLeftX()),
+            false));
 
     // ==================== FACE BUTTONS ====================
 
     // X: X-lock wheels (defensive stance)
     m_driverController.x().whileTrue(m_swerve.applyRequest(() -> xLock));
 
-    // B: Aim and shoot WITHOUT intake agitation
-    m_driverController.b().whileTrue(
-        m_superstructure.aimAndShootCommand(
-            () -> getShootTranslationSpeed(m_driverController.getLeftY()),
-            () -> getShootTranslationSpeed(m_driverController.getLeftX()),
-            false));
+    // B: Feed (500 RPM, max hood angle)
+    m_driverController.b().whileTrue(m_superstructure.feedCommand());
     // Start: Toggle intake to deploy-high (+10 deg) / retract
     m_driverController.start().onTrue(m_superstructure.toggleIntakeHighCommand());
 

@@ -26,7 +26,11 @@ public class AutoAim {
             FieldConstants.Hub.topCenterPoint.getX(),
             FieldConstants.Hub.topCenterPoint.getY(),
             GOAL_Z);
-    private static final Translation3d BASE_FEED_TARGET = new Translation3d(1.8, 6.7, GOAL_Z);
+    private static final Translation3d BASE_FEED_LEFT_TARGET = new Translation3d(1.8, 6.7, GOAL_Z);
+    private static final Translation3d BASE_FEED_RIGHT_TARGET = new Translation3d(
+            BASE_FEED_LEFT_TARGET.getX(),
+            FieldConstants.fieldWidth - BASE_FEED_LEFT_TARGET.getY(),
+            GOAL_Z);
 
     // Shooter Configuration
     // Exit point relative to robot center
@@ -61,11 +65,22 @@ public class AutoAim {
      * selected auto mode.
      */
     public static Translation3d getTarget(Pose2d robotPose) {
+        return getTarget(robotPose, false);
+    }
+
+    /**
+     * Returns the target position (Field-Relative), flipped based on alliance.
+     * In feed mode, optional side selection can choose left/right feed target from
+     * the robot Y position in the blue reference frame.
+     */
+    public static Translation3d getTarget(Pose2d robotPose, boolean useRobotSideForFeedTarget) {
         if (robotPose == null) {
             return getTarget();
         }
         AimMode mode = getAimMode(robotPose);
-        Translation3d baseTarget = (mode == AimMode.FEED) ? BASE_FEED_TARGET : BASE_HUB_TARGET;
+        Translation3d baseTarget = (mode == AimMode.FEED)
+                ? getFeedTarget(robotPose, useRobotSideForFeedTarget)
+                : BASE_HUB_TARGET;
         return AllianceFlipUtil.apply(baseTarget);
     }
 
@@ -118,6 +133,20 @@ public class AutoAim {
      * exit point) has moved during the time-of-flight.
      */
     public static ShootingSolution calculate(Pose2d robotPose, ChassisSpeeds robotSpeeds) {
+        return calculate(robotPose, robotSpeeds, false);
+    }
+
+    /**
+     * Calculates the shooting solution with Shoot-on-the-Move (SOTM) support.
+     *
+     * @param useRobotSideForFeedTarget when true, feed mode target side is selected
+     *                                  from robot Y position (left side aims left
+     *                                  target, right side aims right target)
+     */
+    public static ShootingSolution calculate(
+            Pose2d robotPose,
+            ChassisSpeeds robotSpeeds,
+            boolean useRobotSideForFeedTarget) {
         if (robotPose == null || robotSpeeds == null) {
             publishMapTelemetry(0.0, null, AimMode.HUB, false, 0.0);
             return new ShootingSolution(new Rotation2d(), 0.0, 0.0, 0.0, false);
@@ -126,7 +155,7 @@ public class AutoAim {
         double robotXBlueMeters = getRobotXBlueMeters(robotPose);
         AimMode mode = getAimMode(robotPose);
         boolean feedModeActive = mode == AimMode.FEED;
-        Translation3d baseTarget3d = getTarget(robotPose);
+        Translation3d baseTarget3d = getTarget(robotPose, useRobotSideForFeedTarget);
         Translation2d baseTargetXY = baseTarget3d.toTranslation2d();
 
         // Shooter exit point on the field (accounts for robot rotation).
@@ -193,6 +222,16 @@ public class AutoAim {
     private static AimMode getAimMode(Pose2d robotPose) {
         double robotXBlueMeters = AllianceFlipUtil.applyX(robotPose.getX());
         return robotXBlueMeters > FEED_MODE_BLUE_X_THRESHOLD_M ? AimMode.FEED : AimMode.HUB;
+    }
+
+    private static Translation3d getFeedTarget(Pose2d robotPose, boolean useRobotSideForFeedTarget) {
+        if (!useRobotSideForFeedTarget || robotPose == null) {
+            return BASE_FEED_LEFT_TARGET;
+        }
+        double robotYBlueMeters = AllianceFlipUtil.applyY(robotPose.getY());
+        return robotYBlueMeters >= FieldConstants.LinesHorizontal.center
+                ? BASE_FEED_LEFT_TARGET
+                : BASE_FEED_RIGHT_TARGET;
     }
 
     private static void publishMapTelemetry(

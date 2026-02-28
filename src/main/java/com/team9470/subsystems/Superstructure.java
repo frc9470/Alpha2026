@@ -155,7 +155,11 @@ public class Superstructure extends SubsystemBase {
      * Use with swerve to get the rotation rate.
      */
     public AimResult getAimResult() {
-        var solution = AutoAim.calculate(poseSupplier.get(), speedsSupplier.get());
+        return getAimResult(false);
+    }
+
+    public AimResult getAimResult(boolean useRobotSideForFeedTarget) {
+        var solution = AutoAim.calculate(poseSupplier.get(), speedsSupplier.get(), useRobotSideForFeedTarget);
 
         double rotError = solution.targetRobotYaw()
                 .minus(poseSupplier.get().getRotation())
@@ -205,11 +209,12 @@ public class Superstructure extends SubsystemBase {
     public Command aimAndShootCommand(Supplier<Double> vxSupplier, Supplier<Double> vySupplier, boolean agitate) {
         Swerve swerve = Swerve.getInstance();
         AtomicBoolean shooterReadyLatched = new AtomicBoolean(false);
+        boolean useRobotSideForFeedTarget = !agitate;
         // Use closed-loop velocity so commanding 0 m/s actively brakes (no drift)
         SwerveRequest.FieldCentric aimDrive = new SwerveRequest.FieldCentric()
                 .withDriveRequestType(SwerveModule.DriveRequestType.Velocity);
         return Commands.run(() -> {
-            var result = getAimResult();
+            var result = getAimResult(useRobotSideForFeedTarget);
             shooter.setSetpoint(result.solution());
             intake.setShooting(true);
             intake.setAgitating(agitate);
