@@ -140,4 +140,10 @@ public class Autos {
             .andThen(driveOverBumpTest.cmd()));
     return routine;
   }
+
+  public AutoRoutine shootPreloaded() {
+    AutoRoutine routine = m_autoFactory.newRoutine("shootPreloaded");
+    routine.active().onTrue(Superstructure.getInstance().aimAndShootCommand().withTimeout(5));
+    return routine;
+  }
 }
