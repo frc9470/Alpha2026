@@ -19,7 +19,7 @@ public class AutoAim {
     // Field Geometry (from FieldConstants)
     private static final double BALL_RADIUS_METERS = FieldConstants.GamePiece.ballRadius;
     private static final double GOAL_Z = FieldConstants.Hub.height + BALL_RADIUS_METERS; // Target Z
-    private static final double FEED_MODE_BLUE_X_THRESHOLD_M = 4.11; // was 3.5, increased by 2 ft
+    private static final double FEED_MODE_BLUE_X_THRESHOLD_M = 4.5;
 
     // Field Center Target (Hub center point + ball clearance)
     private static final Translation3d BASE_HUB_TARGET = new Translation3d(

@@ -17,6 +17,7 @@ import com.team9470.util.AutoAim.ShootingSolution;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.util.Units;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 import java.util.function.Supplier;
@@ -28,6 +29,11 @@ import java.util.function.Supplier;
  * All physics simulation is handled by ProjectileSimulation.
  */
 public class Shooter extends SubsystemBase {
+    private static final double kFlywheelSetpointToleranceRPS = 0.7; // 42 RPM
+    private static final double kHoodSetpointToleranceRotations = 0.01; // ~3.6 degrees
+    private static final double kOverrevOffsetRPS = 250.0 / 60.0; // +250 RPM
+    private static final double kOverrevRampSeconds = 0.75;
+    private static final double kNonZeroSpeedEpsilonRPS = 1e-4;
 
     private static final double kMinHoodAngleRotations = ShooterConstants.launchRadToMechanismRotations(
             ShooterConstants.kMinHoodAngle.in(edu.wpi.first.units.Units.Radians));
@@ -46,9 +52,12 @@ public class Shooter extends SubsystemBase {
 
     // State
     private double targetSpeedRPS = 0.0;
+    private double nominalTargetSpeedRPS = 0.0;
     private double targetHoodAngleRotations = kMinHoodAngleRotations; // Launch angle (mechanism rotations)
     private boolean isFiring = false;
     private boolean needsHoming = true;
+    private boolean overrevActive = false;
+    private double overrevRampStartTimestampSec = Double.NEGATIVE_INFINITY;
 
     // Simulation context
     private Supplier<Pose2d> poseSupplier = Pose2d::new;
@@ -106,8 +115,16 @@ public class Shooter extends SubsystemBase {
      * Set target shooting solution from AutoAim.
      */
     public void setSetpoint(ShootingSolution solution) {
+        double requestedSpeedRPS = solution.flywheelRpm() / 60.0;
+        if (requestedSpeedRPS > kNonZeroSpeedEpsilonRPS && nominalTargetSpeedRPS <= kNonZeroSpeedEpsilonRPS) {
+            startOverrev();
+        } else if (requestedSpeedRPS <= kNonZeroSpeedEpsilonRPS) {
+            clearOverrev();
+        }
+
         // Flywheel uses direct map RPM command.
-        this.targetSpeedRPS = solution.flywheelRpm() / 60.0;
+        this.nominalTargetSpeedRPS = requestedSpeedRPS;
+        this.targetSpeedRPS = applyOverrev(requestedSpeedRPS);
 
         // Hood map uses commanded hood plane angle in degrees.
         double launchRad = Math.toRadians(solution.hoodCommandDeg());
@@ -119,6 +136,8 @@ public class Shooter extends SubsystemBase {
      * Set flywheel speed directly (RPS).
      */
     public void setFlywheelSpeed(double rps) {
+        clearOverrev();
+        this.nominalTargetSpeedRPS = rps;
         this.targetSpeedRPS = rps;
     }
 
@@ -145,8 +164,10 @@ public class Shooter extends SubsystemBase {
      */
     public void stop() {
         targetSpeedRPS = 0.0;
+        nominalTargetSpeedRPS = 0.0;
         targetHoodAngleRotations = kMinHoodAngleRotations;
         isFiring = false;
+        clearOverrev();
     }
 
     /**
@@ -154,9 +175,11 @@ public class Shooter extends SubsystemBase {
      */
     public void requestHome() {
         targetSpeedRPS = 0.0;
+        nominalTargetSpeedRPS = 0.0;
         targetHoodAngleRotations = kMinHoodAngleRotations;
         isFiring = false;
         needsHoming = true;
+        clearOverrev();
     }
 
     /**
@@ -169,8 +192,8 @@ public class Shooter extends SubsystemBase {
         double currentHoodRot = getCurrentHoodRotations();
         double hoodError = Math.abs(currentHoodRot - targetHoodAngleRotations);
 
-        boolean flywheelReady = rpsError < 0.7; // 42 RPM
-        boolean hoodReady = hoodError < 0.01; // ~3.6 degrees
+        boolean flywheelReady = rpsError < kFlywheelSetpointToleranceRPS;
+        boolean hoodReady = hoodError < kHoodSetpointToleranceRotations;
 
         return flywheelReady && hoodReady;
     }
@@ -189,6 +212,48 @@ public class Shooter extends SubsystemBase {
             return ShooterConstants.launchRadToMechanismRotations(launchRad);
         }
         return hoodMotor.getPosition().getValueAsDouble();
+    }
+
+    private void startOverrev() {
+        overrevActive = true;
+        overrevRampStartTimestampSec = Double.NEGATIVE_INFINITY;
+    }
+
+    private void clearOverrev() {
+        overrevActive = false;
+        overrevRampStartTimestampSec = Double.NEGATIVE_INFINITY;
+    }
+
+    private double applyOverrev(double requestedSpeedRPS) {
+        if (requestedSpeedRPS <= kNonZeroSpeedEpsilonRPS) {
+            return 0.0;
+        }
+        if (!overrevActive) {
+            return requestedSpeedRPS;
+        }
+
+        double nowSec = Timer.getFPGATimestamp();
+
+        if (overrevRampStartTimestampSec == Double.NEGATIVE_INFINITY) {
+            double boostedTargetRPS = requestedSpeedRPS + kOverrevOffsetRPS;
+            double speedErrorRPS = Math.abs(getCurrentFlywheelRPS() - boostedTargetRPS);
+            if (speedErrorRPS < kFlywheelSetpointToleranceRPS) {
+                overrevRampStartTimestampSec = nowSec;
+            } else {
+                return boostedTargetRPS;
+            }
+        }
+
+        double elapsedSec = nowSec - overrevRampStartTimestampSec;
+        double rampProgress = Math.max(0.0, Math.min(1.0, elapsedSec / kOverrevRampSeconds));
+        double offsetRPS = kOverrevOffsetRPS * (1.0 - rampProgress);
+
+        if (rampProgress >= 1.0) {
+            clearOverrev();
+            return requestedSpeedRPS;
+        }
+
+        return requestedSpeedRPS + offsetRPS;
     }
 
     @Override
