@@ -13,7 +13,9 @@ import com.team9470.subsystems.swerve.Swerve;
 import com.ctre.phoenix6.swerve.SwerveModule;
 import com.ctre.phoenix6.swerve.SwerveRequest;
 import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.math.filter.LinearFilter;
 import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -47,15 +49,26 @@ public class Superstructure extends SubsystemBase {
     // Context suppliers (set by RobotContainer)
     private Supplier<Pose2d> poseSupplier = () -> new Pose2d();
     private Supplier<ChassisSpeeds> speedsSupplier = () -> new ChassisSpeeds();
+    private static final double kControlLoopDtSec = 0.02;
     private static final double kAimKp = 12.0;
     private static final double kAimKd = 0.5;
     private static final double kAimAlignmentToleranceRad = Math.toRadians(3.0);
     private static final double kAimMaxAngularRateRadPerSec = Math.toRadians(TunerConstants.maxAngularVelocity);
+    private static final double kDriveAngleDerivativeFilterWindowSec = 1.5;
+    private static final double kHoodDerivativeFilterWindowSec = 0.4;
+    private static final double kFlywheelDerivativeFilterWindowSec = 0.4;
     private static final double kShootMaxPolarVelocityRadPerSec = 0.5;
     private static final double kShootVelocityLimitMinRequestMps = 0.15;
     private static final double kSotmFireSafetyMinSpeedMps = 0.35;
     private static final double kSotmMaxAccelerationForFireMps2 = 3.5;
     private static final double kSotmMaxOmegaForFireRadPerSec = Math.toRadians(220.0);
+    private LinearFilter driveAngleRateFilter = createMovingAverageFilter(kDriveAngleDerivativeFilterWindowSec);
+    private LinearFilter hoodRateFilter = createMovingAverageFilter(kHoodDerivativeFilterWindowSec);
+    private LinearFilter flywheelRateFilter = createMovingAverageFilter(kFlywheelDerivativeFilterWindowSec);
+    private boolean derivativeStateInitialized = false;
+    private Rotation2d lastTargetYaw = new Rotation2d();
+    private double lastHoodCommandDeg = 0.0;
+    private double lastFlywheelRpm = 0.0;
 
     private Superstructure() {
         shooter = new Shooter();
@@ -182,26 +195,77 @@ public class Superstructure extends SubsystemBase {
 
     public AimResult getAimResult(Pose2d robotPose, ChassisSpeeds robotSpeeds, boolean useRobotSideForFeedTarget) {
         var solution = AutoAim.calculate(robotPose, robotSpeeds, useRobotSideForFeedTarget);
+        AimSetpointDerivatives derivatives = computeFilteredSetpointDerivatives(solution);
         double rotError = solution.targetRobotYaw()
                 .minus(robotPose.getRotation())
                 .getRadians();
-        double rotCmd = solution.targetOmega()
+        double driveSetpointRateRadPerSec = derivatives.driveAngleRateRadPerSec();
+        double rotCmd = driveSetpointRateRadPerSec
                 + (rotError * kAimKp)
-                + ((solution.targetOmega() - robotSpeeds.omegaRadiansPerSecond) * kAimKd);
+                + ((driveSetpointRateRadPerSec - robotSpeeds.omegaRadiansPerSecond) * kAimKd);
         rotCmd = MathUtil.clamp(rotCmd, -kAimMaxAngularRateRadPerSec, kAimMaxAngularRateRadPerSec);
         boolean isAligned = Math.abs(rotError) < kAimAlignmentToleranceRad;
 
-        return new AimResult(rotCmd, isAligned, rotError, solution);
+        return new AimResult(rotCmd, isAligned, rotError, derivatives, solution);
     }
 
     /**
      * Result of aiming calculation for swerve to use.
      */
+    public record AimSetpointDerivatives(
+            double driveAngleRateRadPerSec,
+            double hoodRateDegPerSec,
+            double flywheelRateRpmPerSec) {
+    }
+
     public record AimResult(
             double rotationCommand,
             boolean isAligned,
             double rotationErrorRad,
+            AimSetpointDerivatives derivatives,
             AutoAim.ShootingSolution solution) {
+    }
+
+    private static LinearFilter createMovingAverageFilter(double windowSec) {
+        int taps = Math.max(1, (int) Math.round(windowSec / kControlLoopDtSec));
+        return LinearFilter.movingAverage(taps);
+    }
+
+    private void resetAimSetpointDerivatives() {
+        driveAngleRateFilter = createMovingAverageFilter(kDriveAngleDerivativeFilterWindowSec);
+        hoodRateFilter = createMovingAverageFilter(kHoodDerivativeFilterWindowSec);
+        flywheelRateFilter = createMovingAverageFilter(kFlywheelDerivativeFilterWindowSec);
+        derivativeStateInitialized = false;
+        lastTargetYaw = new Rotation2d();
+        lastHoodCommandDeg = 0.0;
+        lastFlywheelRpm = 0.0;
+    }
+
+    private AimSetpointDerivatives computeFilteredSetpointDerivatives(AutoAim.ShootingSolution solution) {
+        if (!derivativeStateInitialized) {
+            derivativeStateInitialized = true;
+            lastTargetYaw = solution.targetRobotYaw();
+            lastHoodCommandDeg = solution.hoodCommandDeg();
+            lastFlywheelRpm = solution.flywheelRpm();
+            return new AimSetpointDerivatives(0.0, 0.0, 0.0);
+        }
+
+        double rawDriveAngleRateRadPerSec = solution.targetRobotYaw().minus(lastTargetYaw).getRadians() / kControlLoopDtSec;
+        double rawHoodRateDegPerSec = (solution.hoodCommandDeg() - lastHoodCommandDeg) / kControlLoopDtSec;
+        double rawFlywheelRateRpmPerSec = (solution.flywheelRpm() - lastFlywheelRpm) / kControlLoopDtSec;
+
+        double filteredDriveAngleRateRadPerSec = driveAngleRateFilter.calculate(rawDriveAngleRateRadPerSec);
+        double filteredHoodRateDegPerSec = hoodRateFilter.calculate(rawHoodRateDegPerSec);
+        double filteredFlywheelRateRpmPerSec = flywheelRateFilter.calculate(rawFlywheelRateRpmPerSec);
+
+        lastTargetYaw = solution.targetRobotYaw();
+        lastHoodCommandDeg = solution.hoodCommandDeg();
+        lastFlywheelRpm = solution.flywheelRpm();
+
+        return new AimSetpointDerivatives(
+                filteredDriveAngleRateRadPerSec,
+                filteredHoodRateDegPerSec,
+                filteredFlywheelRateRpmPerSec);
     }
 
     private static Translation2d limitTranslationForLaunch(
@@ -369,8 +433,12 @@ public class Superstructure extends SubsystemBase {
             intake.setShooting(false);
             intake.setAgitating(false);
             shooterReadyLatched.set(false);
+            resetAimSetpointDerivatives();
             swerve.setControl(aimDrive.withVelocityX(0).withVelocityY(0).withRotationalRate(0));
-        }).beforeStarting(() -> shooterReadyLatched.set(false))
+        }).beforeStarting(() -> {
+            shooterReadyLatched.set(false);
+            resetAimSetpointDerivatives();
+        })
                 .withName("Superstructure AimAndShoot");
     }
 
