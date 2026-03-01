@@ -114,6 +114,7 @@ public class RobotContainer {
         m_superstructure.aimAndShootCommand(
             () -> getShootTranslationSpeed(m_driverController.getLeftY()),
             () -> getShootTranslationSpeed(m_driverController.getLeftX()),
+            true,
             true));
 
     // ==================== BUMPERS ====================
@@ -126,7 +127,8 @@ public class RobotContainer {
         m_superstructure.aimAndShootCommand(
             () -> getShootTranslationSpeed(m_driverController.getLeftY()),
             () -> getShootTranslationSpeed(m_driverController.getLeftX()),
-            false));
+            false,
+            true));
 
     // ==================== FACE BUTTONS ====================
 

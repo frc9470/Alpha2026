@@ -207,9 +207,28 @@ public class Superstructure extends SubsystemBase {
      * @param agitate    whether to agitate the intake during shooting
      */
     public Command aimAndShootCommand(Supplier<Double> vxSupplier, Supplier<Double> vySupplier, boolean agitate) {
+        return aimAndShootCommand(vxSupplier, vySupplier, agitate, !agitate);
+    }
+
+    /**
+     * Aim, rotate, and shoot — full version with explicit feed-side targeting
+     * selection.
+     * Handles swerve rotation automatically via auto-aim.
+     *
+     * @param vxSupplier                   field-relative X velocity (m/s)
+     * @param vySupplier                   field-relative Y velocity (m/s)
+     * @param agitate                      whether to agitate the intake during
+     *                                     shooting
+     * @param useRobotSideForFeedTarget    when true, feed mode target side is
+     *                                     selected from robot side (left/right)
+     */
+    public Command aimAndShootCommand(
+            Supplier<Double> vxSupplier,
+            Supplier<Double> vySupplier,
+            boolean agitate,
+            boolean useRobotSideForFeedTarget) {
         Swerve swerve = Swerve.getInstance();
         AtomicBoolean shooterReadyLatched = new AtomicBoolean(false);
-        boolean useRobotSideForFeedTarget = !agitate;
         // Use closed-loop velocity so commanding 0 m/s actively brakes (no drift)
         SwerveRequest.FieldCentric aimDrive = new SwerveRequest.FieldCentric()
                 .withDriveRequestType(SwerveModule.DriveRequestType.Velocity);
