@@ -52,10 +52,17 @@ public class Autos {
    * When the shoot command finishes or times out, agitation is automatically
    * cancelled.
    */
+  private static Command aimShoot(double timeoutSec) {
+    double agitateDurationSec = Math.max(0.0, timeoutSec - kAutoAgitateDelaySec - kAutoIntakeLowerBeforeDriveSec);
+    return Commands.deadline(Superstructure.getInstance().aimAndShootCommand().withTimeout(timeoutSec));
+//        ,
+//        Commands.waitSeconds(kAutoAgitateDelaySec));
+//            .andThen(Superstructure.getInstance().agitateIntakeCommand().withTimeout(agitateDurationSec)));
+  }
+
   private static Command aimShootWithAgitate(double timeoutSec) {
     double agitateDurationSec = Math.max(0.0, timeoutSec - kAutoAgitateDelaySec - kAutoIntakeLowerBeforeDriveSec);
-    return Commands.deadline(
-        Superstructure.getInstance().aimAndShootCommand().withTimeout(timeoutSec),
+    return Commands.deadline(Superstructure.getInstance().aimAndShootCommand().withTimeout(timeoutSec),
         Commands.waitSeconds(kAutoAgitateDelaySec)
             .andThen(Superstructure.getInstance().agitateIntakeCommand().withTimeout(agitateDurationSec)));
   }
@@ -130,7 +137,7 @@ public class Autos {
     AutoTrajectory secondCycle = loadTrajectory(routine, "trenchCycle2", mirrorAcrossY);
 
     Command autoCommand = startFirstTrajectory(firstCycle)
-        .andThen(aimShootWithAgitate(kTrenchShotTimeoutSec))
+        .andThen(aimShoot(kTrenchShotTimeoutSec))
         .andThen(secondCycle.cmd())
         .andThen(aimShootWithAgitate(kTrenchShotTimeoutSec));
 
@@ -170,7 +177,7 @@ public class Autos {
     AutoTrajectory finishTrajectory = loadTrajectory(routine, finishTrajectoryName, mirrorAcrossY);
 
     Command autoCommand = startFirstTrajectory(firstCycle)
-        .andThen(aimShootWithAgitate(kBumpShotTimeoutSec))
+        .andThen(aimShoot(kBumpShotTimeoutSec))
         .andThen(secondCycle.cmd())
         .andThen(aimShootWithAgitate(kBumpShotTimeoutSec))
         .andThen(finishTrajectory.cmd());
@@ -207,11 +214,11 @@ public class Autos {
   }
 
   public AutoRoutine leftBump() {
-    return buildBumpRoutine("leftBump", false, "overBump", false);
+    return buildBumpRoutine("leftBump", false, "bumpToCenter", false);
   }
 
   public AutoRoutine rightBump() {
-    return buildBumpRoutine("rightBump", true, "overBump", false);
+    return buildBumpRoutine("rightBump", true, "bumpToCenter", false);
   }
 
   public AutoRoutine leftBumpConservative() {
@@ -220,7 +227,7 @@ public class Autos {
         false,
         "bumpCycle1",
         "bumpCycle2Conservative",
-        "overBump",
+        "bumpToCenter",
         false);
   }
 
@@ -230,7 +237,7 @@ public class Autos {
         false,
         "bumpCycle1Rush",
         "bumpCycle2",
-        "overBump",
+        "bumpToCenter",
         false);
   }
 
@@ -240,7 +247,7 @@ public class Autos {
         true,
         "bumpCycle1Rush",
         "bumpCycle2",
-        "overBump",
+        "bumpToCenter",
         false);
   }
 
@@ -250,7 +257,7 @@ public class Autos {
         true,
         "bumpCycle1",
         "bumpCycle2Conservative",
-        "overBump",
+        "bumpToCenter",
         false);
   }
 
@@ -260,7 +267,7 @@ public class Autos {
         false,
         "bumpCycle1Prototype",
         "bumpCycle2Prototype",
-        "overBump",
+        "bumpToCenter",
         false);
   }
 
@@ -270,7 +277,7 @@ public class Autos {
         true,
         "bumpCycle1Prototype",
         "bumpCycle2Prototype",
-        "overBump",
+        "bumpToCenter",
         false);
   }
 
